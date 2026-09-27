@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BestWishes/GameValueEditor-Modules/schemas/module.schema.json",
+  "title": "GameValueEditor module manifest",
+  "type": "object",
+  "required": ["id", "version", "displayName", "assemblyFile", "hostApiVersion", "editors"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^game\\.[a-z0-9.-]+$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+" },
+    "displayName": { "type": "string", "minLength": 1 },
+    "assemblyFile": { "type": "string", "pattern": "^[^/\\\\]+\\.dll$" },
+    "hostApiVersion": { "const": 2 },
+    "editors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "displayName", "kind", "order"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "displayName": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["collection", "master-detail", "property-grid"] },
+          "order": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

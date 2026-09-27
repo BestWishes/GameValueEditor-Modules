@@ -1,0 +1,15 @@
+{
+  "id": "game.example",
+  "version": "1.0.0",
+  "displayName": "示例游戏专属模块",
+  "assemblyFile": "GameValueEditor.Modules.Example.dll",
+  "hostApiVersion": 2,
+  "editors": [
+    {
+      "id": "game.example.inventory",
+      "displayName": "背包物品",
+      "kind": "collection",
+      "order": 100
+    }
+  ]
+}

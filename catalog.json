@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "hostApiVersion": 2,
+  "modules": [
+    {
+      "id": "game.fzzml",
+      "legacyIds": [
+        "game.fzzml.inventory.v1"
+      ],
+      "version": "2.0.0",
+      "displayName": "放置斩魔录专属修改模块",
+      "description": "包含背包物品与人物属性两个游戏内编辑模块。",
+      "hostApiVersion": 2,
+      "processNames": [
+        "fzzml"
+      ],
+      "compatibleBuilds": [
+        {
+          "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+          "gameAssemblySha256": "CEC90FD2CCEEBD51637BFAC90C86C6E45D68CC76E6FDB0FAB1430F2A198D7421",
+          "metadataSha256": "EB4D7A29675EC35CDE1106D6AE3C0E22BCA0AEF5C50248C2D42FA139077E446F"
+        },
+        {
+          "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+          "gameAssemblySha256": "EAE4239F59FD5DB09033C9FE21195A800881267B57833DA2AABB659843F99B27",
+          "metadataSha256": "BCAA6845585DA9920F61F75A04FB70ACB6298D95C94FC545D0C4583C44C88947"
+        },
+        {
+          "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+          "gameAssemblySha256": "BF156D35DDB79839797517BC95BC07080DAACDCF78D08579B7D0D4C09386D752",
+          "metadataSha256": "AEB09A9D3C8359F54C2DF29F3045C5AE1D9270DC269EC0A8E18C0D359CE4CD29"
+        }
+      ],
+      "editors": [
+        {
+          "id": "game.fzzml.inventory",
+          "displayName": "背包物品",
+          "kind": "collection",
+          "order": 100,
+          "sessionOnly": false
+        },
+        {
+          "id": "game.fzzml.character-attributes",
+          "displayName": "人物属性",
+          "kind": "master-detail",
+          "order": 200,
+          "sessionOnly": true
+        }
+      ],
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.0.0/GameValueEditor.Module.Fzzml-v2.0.0.zip",
+      "sha256": "0F4EA4EFA867A3F7815F4C407526DD773E5BFA24CBA1FF6153991FE1E58BCBE7"
+    }
+  ]
+}

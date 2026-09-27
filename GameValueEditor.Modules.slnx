@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/games/">
+    <Project Path="games/fzzml/GameValueEditor.Modules.Fzzml.csproj" />
+  </Folder>
+  <Folder Name="/sdk/">
+    <Project Path="sdk/GameValueEditor.ModuleSdk/GameValueEditor.ModuleSdk.csproj" />
+  </Folder>
+</Solution>
