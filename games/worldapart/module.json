@@ -1,0 +1,21 @@
+{
+  "id": "game.worldapart",
+  "version": "1.0.0",
+  "displayName": "WorldApart 专属修改模块",
+  "assemblyFile": "GameValueEditor.Modules.WorldApart.dll",
+  "hostApiVersion": 2,
+  "editors": [
+    {
+      "id": "game.worldapart.inventory",
+      "displayName": "背包物品",
+      "kind": "collection",
+      "order": 100
+    },
+    {
+      "id": "game.worldapart.character-attributes",
+      "displayName": "人物属性",
+      "kind": "master-detail",
+      "order": 200
+    }
+  ]
+}

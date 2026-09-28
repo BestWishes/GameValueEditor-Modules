@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/games/">
     <Project Path="games/fzzml/GameValueEditor.Modules.Fzzml.csproj" />
+    <Project Path="games/worldapart/GameValueEditor.Modules.WorldApart.csproj" />
   </Folder>
   <Folder Name="/sdk/">
     <Project Path="sdk/GameValueEditor.ModuleSdk/GameValueEditor.ModuleSdk.csproj" />
