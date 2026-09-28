@@ -49,6 +49,41 @@
       ],
       "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.0.0/GameValueEditor.Module.Fzzml-v2.0.0.zip",
       "sha256": "0F4EA4EFA867A3F7815F4C407526DD773E5BFA24CBA1FF6153991FE1E58BCBE7"
+    },
+    {
+      "id": "game.worldapart",
+      "version": "1.0.0",
+      "displayName": "WorldApart 专属修改模块",
+      "description": "包含背包物品与人物属性两个可持久化的游戏内编辑模块。",
+      "hostApiVersion": 2,
+      "processNames": [
+        "WorldApart"
+      ],
+      "compatibleBuilds": [
+        {
+          "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
+          "gameAssemblySha256": "E4BFA837BD5F43BF5FFBE3E28C80B40CD3E20B24CE63941CE2280874DF2FA056",
+          "metadataSha256": "55F65FE395395CAA4C3C8DE6F874107AB92742CA638F1E0F77ECB609A22154FA"
+        }
+      ],
+      "editors": [
+        {
+          "id": "game.worldapart.inventory",
+          "displayName": "背包物品",
+          "kind": "collection",
+          "order": 100,
+          "sessionOnly": false
+        },
+        {
+          "id": "game.worldapart.character-attributes",
+          "displayName": "人物属性",
+          "kind": "master-detail",
+          "order": 200,
+          "sessionOnly": false
+        }
+      ],
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.0.0/GameValueEditor.Module.WorldApart-v1.0.0.zip",
+      "sha256": "8731E0130B1336AD91F4B4B55A4F556D6E3E250927B61C229B1FF12D45556CD6"
     }
   ]
 }
