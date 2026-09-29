@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "hostApiVersion": 2,
   "modules": [
     {
@@ -7,8 +7,9 @@
       "legacyIds": [
         "game.fzzml.inventory.v1"
       ],
-      "version": "2.0.0",
+      "version": "2.0.1",
       "displayName": "放置斩魔录专属修改模块",
+      "gameDisplayName": "放置斩魔录",
       "description": "包含背包物品与人物属性两个游戏内编辑模块。",
       "hostApiVersion": 2,
       "processNames": [
@@ -47,13 +48,24 @@
           "sessionOnly": true
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.0.0/GameValueEditor.Module.Fzzml-v2.0.0.zip",
-      "sha256": "0F4EA4EFA867A3F7815F4C407526DD773E5BFA24CBA1FF6153991FE1E58BCBE7"
+      "contributors": [
+        {
+          "githubId": 9667417,
+          "githubLogin": "BestWishes",
+          "displayName": "Felix_JiangHuSect",
+          "profileUrl": "https://github.com/BestWishes",
+          "firstContributionDate": "2026-09-27",
+          "latestContributionDate": "2026-09-27"
+        }
+      ],
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.0.1/GameValueEditor.Module.Fzzml-v2.0.1.zip",
+      "sha256": "74344E157E4FD4096E434A6724BAD650064E5D042BAEC17A2727D38C697C6011"
     },
     {
       "id": "game.worldapart",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "displayName": "WorldApart 专属修改模块",
+      "gameDisplayName": "WorldApart",
       "description": "包含背包物品与人物属性两个可持久化的游戏内编辑模块。",
       "hostApiVersion": 2,
       "processNames": [
@@ -82,8 +94,18 @@
           "sessionOnly": false
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.0.0/GameValueEditor.Module.WorldApart-v1.0.0.zip",
-      "sha256": "8731E0130B1336AD91F4B4B55A4F556D6E3E250927B61C229B1FF12D45556CD6"
+      "contributors": [
+        {
+          "githubId": 9667417,
+          "githubLogin": "BestWishes",
+          "displayName": "Felix_JiangHuSect",
+          "profileUrl": "https://github.com/BestWishes",
+          "firstContributionDate": "2026-09-28",
+          "latestContributionDate": "2026-09-28"
+        }
+      ],
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.0.1/GameValueEditor.Module.WorldApart-v1.0.1.zip",
+      "sha256": "11DA5CC007B0F47BD50323C7E654895E62499BB5FBCCF3C9CE2FDC3F02F25D42"
     }
   ]
 }
