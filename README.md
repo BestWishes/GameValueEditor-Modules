@@ -13,6 +13,7 @@
 games/
   fzzml/
     module.json
+    contributors.generated.json
     src/
     docs/
 sdk/
@@ -23,7 +24,7 @@ catalog.json
 
 ## 当前模块
 
-`game.fzzml` v2.0.0：
+`game.fzzml` v2.0.1：
 
 - 背包物品：实时读取、筛选和修改物品总数，并调用游戏自身保存流程。
 - 人物属性：列出人物及五维属性，修改后立即刷新游戏界面；该实验功能仅本次游戏运行有效，关闭游戏后失效，不锁定、不自动重应用。
@@ -34,12 +35,20 @@ catalog.json
 
 ```powershell
 dotnet build GameValueEditor.Modules.slnx -c Release
-./scripts/publish-fzzml.ps1 -Version 2.0.0
+./scripts/validate-modules.ps1 -SkipCatalog
+./scripts/publish-fzzml.ps1 -Version 2.0.1
+./scripts/publish-worldapart.ps1 -Version 1.0.1
 ```
 
-发布脚本生成 `dist/GameValueEditor.Module.Fzzml-v2.0.0.zip`，并把真实 SHA-256 写入 `catalog.json`。
+发布脚本从各游戏的 `module.json` 生成包内清单，将自动维护的贡献者信息注入包中，生成 ZIP，并把同一份清单与真实 SHA-256 同步到 `catalog.json`。`module.json` 是兼容构建、编辑器列表和游戏身份的唯一人工维护来源。
 
-新增游戏或编辑能力前请阅读 [模块扩展规范](docs/MODULE_EXTENSION_GUIDE.md) 和 [fzzml 实现说明](games/fzzml/docs/README.md)。
+## 贡献者与审核
+
+- 贡献者按整个游戏专属模块展示，不按“背包物品”“人物属性”等编辑模块拆分，也不显示贡献数量或排名。
+- 合并 PR 后，GitHub Actions 根据该 PR 实际修改过的 `games/{短名}` 自动写入 GitHub 显示名称、主页、首次和最新贡献日期；贡献者不直接编辑 `contributors.generated.json`。
+- PR 会自动校验稳定 ID、精确构建指纹、清单/目录一致性并构建所有模块。模块含可执行代码，因此自动检查通过后仍需维护者做安全边界和最小实机读写复核。
+
+新增游戏或编辑能力前请阅读 [模块扩展规范](docs/MODULE_EXTENSION_GUIDE.md)、[参与维护](CONTRIBUTING.md) 和现有游戏实现说明。
 
 ## 安全范围
 

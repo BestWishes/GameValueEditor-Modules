@@ -2,14 +2,27 @@
   "id": "game.example",
   "version": "1.0.0",
   "displayName": "示例游戏专属模块",
+  "gameDisplayName": "示例游戏",
+  "description": "简要说明这个游戏专属模块提供的功能。",
   "assemblyFile": "GameValueEditor.Modules.Example.dll",
   "hostApiVersion": 2,
+  "processNames": [
+    "ExampleGame"
+  ],
+  "compatibleBuilds": [
+    {
+      "executableSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "gameAssemblySha256": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "metadataSha256": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+    }
+  ],
   "editors": [
     {
       "id": "game.example.inventory",
       "displayName": "背包物品",
       "kind": "collection",
-      "order": 100
+      "order": 100,
+      "sessionOnly": false
     }
   ]
 }

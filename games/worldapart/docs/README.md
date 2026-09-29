@@ -1,6 +1,6 @@
 # WorldApart 专属修改模块
 
-稳定游戏 ID：`game.worldapart`，当前模块版本：`1.0.0`。
+稳定游戏 ID：`game.worldapart`，当前模块版本：`1.0.1`。
 
 ## 游戏内编辑模块
 

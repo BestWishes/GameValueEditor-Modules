@@ -1,0 +1,41 @@
+name: Update module contributors
+
+on:
+  pull_request_target:
+    types: [closed]
+  schedule:
+    - cron: "17 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update:
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.merged == true
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Update from merged pull request
+        if: github.event_name == 'pull_request_target'
+        shell: pwsh
+        run: ./scripts/update-contributors.ps1 -PullRequestNumber ${{ github.event.pull_request.number }} -Repository "${{ github.repository }}" -Token "${{ github.token }}"
+      - name: Refresh GitHub display names
+        if: github.event_name != 'pull_request_target'
+        shell: pwsh
+        run: ./scripts/update-contributors.ps1 -RefreshProfiles -Repository "${{ github.repository }}" -Token "${{ github.token }}"
+      - name: Validate generated data
+        shell: pwsh
+        run: ./scripts/validate-modules.ps1 -SkipCatalog
+      - name: Commit generated contributor data
+        shell: pwsh
+        run: |
+          if (-not (git status --porcelain)) { exit 0 }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add games/*/contributors.generated.json
+          git commit -m "chore: refresh module contributors"
+          git push
