@@ -10,7 +10,7 @@ using GameValueEditor.ModuleSdk;
 
 namespace GameValueEditor.Modules.WorldApart;
 
-public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, ICharacterAttributesGameAdapter
+public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, ICharacterAttributesGameAdapter, IGameVersionMetadataProvider
 {
     private const string InventoryEditorId = "game.worldapart.inventory";
     private const string CharacterEditorId = "game.worldapart.character-attributes";
@@ -22,11 +22,72 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
             "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
             "E4BFA837BD5F43BF5FFBE3E28C80B40CD3E20B24CE63941CE2280874DF2FA056",
             "55F65FE395395CAA4C3C8DE6F874107AB92742CA638F1E0F77ECB609A22154FA",
+            TablesGetCurrent: 0x14B3DB0,
+            L10nTextGetValue: 0x18CA6B0,
+            GameStoreManagerGetCurrentPlayer: 0xDEBE90,
+            GameStoreManagerGetCurrentStore: 0xDEBF80,
+            GameStoreSaveAutoSlotImmediately: 0xDEF5D0,
+            BagSort: 0xEA1930,
+            BagRefreshRedDots: 0xEA06E0,
             AudioUpdate: 0x148E6E0,
             AudioServiceUpdate: 0x7AC3D0,
             RaiseNullReference: 0x5DE3B0,
             ExpectedAudioUpdate: Convert.FromHexString(
-                "4883EC28488B49104885C9740B33D24883C428E9D8DC31FFE8B3FC14FF"))
+                "4883EC28488B49104885C9740B33D24883C428E9D8DC31FFE8B3FC14FF"),
+            PlayerSetInteractAttributeValue: 0xDC5EE0,
+            CombatSetBaseAttribute: 0xE67710,
+            TalentMarkSpiritRootDirty: 0xE97860,
+            TalentRebuildSpiritRoot: 0xE979C0,
+            IntDictionarySetItem: 0x4ED6B60,
+            ApplicationGetVersion: 0,
+            ApplicationGetProductName: 0,
+            ApplicationGetBuildGuid: 0,
+            AllowStructuralMatch: false,
+            StructuralSignatures: []),
+        new(
+            "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
+            "EDE8A956051C0C831F79E0874AFF28297F41D3FA18C18AD2CA2FF16C33D0938D",
+            "BBECA25F98CFC56BFE48A5BD6DC90B9AADFEB1A6BB8F0DC03CA8DA2EF26DBDBC",
+            TablesGetCurrent: 0x14E74D0,
+            L10nTextGetValue: 0x1A1F3A0,
+            GameStoreManagerGetCurrentPlayer: 0xE2DF40,
+            GameStoreManagerGetCurrentStore: 0xE2E030,
+            GameStoreSaveAutoSlotImmediately: 0xE31680,
+            BagSort: 0xEDA1E0,
+            BagRefreshRedDots: 0xED8F80,
+            AudioUpdate: 0x14D3660,
+            AudioServiceUpdate: 0x7AC3D0,
+            RaiseNullReference: 0x5DE430,
+            ExpectedAudioUpdate: Convert.FromHexString(
+                "4883EC28488B49104885C9740B33D24883C428E9588D2DFFE8B3AD10FF"),
+            PlayerSetInteractAttributeValue: 0xDF50C0,
+            CombatSetBaseAttribute: 0xE9F740,
+            TalentMarkSpiritRootDirty: 0xEC82B0,
+            TalentRebuildSpiritRoot: 0xEC8410,
+            IntDictionarySetItem: 0x4EE3C10,
+            ApplicationGetVersion: 0x631D330,
+            ApplicationGetProductName: 0x631D1E0,
+            ApplicationGetBuildGuid: 0x631CF90,
+            AllowStructuralMatch: true,
+            StructuralSignatures:
+            [
+                Signature(0x14E74D0, "4883EC28803D4C71070700751F488D0D"),
+                Signature(0x1A1F3A0, "40534883EC20803D1A1BB40600488BD9"),
+                Signature(0xE2DF40, "4883EC28803DF8D77207007513488D0D"),
+                Signature(0xE2E030, "4883EC28803D06D7720700751F488D0D"),
+                Signature(0xE31680, "40534883EC20488BD9C6413800488B49"),
+                Signature(0xEDA1E0, "48895C24104889742418574883EC7048"),
+                Signature(0xED8F80, "488B49204885C97417807940007411FF"),
+                Signature(0x14D3660, "4883EC28488B49104885C9740B33D248"),
+                Signature(0xDF50C0, "48895C2418554883EC20803D0F647607"),
+                Signature(0xE9F740, "48895C24184889742420574881EC8000"),
+                Signature(0xEC82B0, "40534883EC2033D2488BD9E860F9FFFF"),
+                Signature(0xEC8410, "40534883EC2033D2488BD9E830F9FFFF"),
+                Signature(0x4EE3C10, "4883EC38498B41204C8B88C000000049"),
+                Signature(0x631D330, "4883EC28488B051DBC25024885C07513"),
+                Signature(0x631D1E0, "4883EC28488B057DBD25024885C07513"),
+                Signature(0x631CF90, "4883EC28488B057DBF25024885C07513")
+            ])
     ];
 
     public string Id => "game.worldapart";
@@ -41,10 +102,13 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
     ];
 
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint) =>
-        SupportedBuilds.Any(layout => layout.Matches(
-            fingerprint.ExecutableSha256,
-            fingerprint.GameAssemblySha256,
-            fingerprint.MetadataSha256));
+        TryResolveLayout(process, fingerprint, out _);
+
+    public GameDeclaredVersionInfo ReadGameVersionMetadata(GameProcessContext process)
+    {
+        using var session = new Session(process.ProcessId, ResolveLayout(process), initializeRoots: false);
+        return session.ReadGameDeclaredVersion();
+    }
 
     public IReadOnlyList<AdapterInventoryItem> ReadInventory(GameProcessContext process)
     {
@@ -128,6 +192,23 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
         return Convert.ToHexString(SHA256.HashData(stream));
     }
 
+    private static CodeSignature Signature(ulong rva, string hex) => new(rva, Convert.FromHexString(hex));
+
+    private static bool TryResolveLayout(
+        GameProcessContext process,
+        GameBuildIdentity fingerprint,
+        out BuildLayout layout)
+    {
+        layout = SupportedBuilds.FirstOrDefault(candidate => candidate.Matches(
+            fingerprint.ExecutableSha256,
+            fingerprint.GameAssemblySha256,
+            fingerprint.MetadataSha256))!;
+        if (layout is not null) return true;
+        layout = SupportedBuilds.FirstOrDefault(candidate => candidate.AllowStructuralMatch &&
+            MatchesStructuralSignatures(process.ProcessId, candidate))!;
+        return layout is not null;
+    }
+
     private static BuildLayout ResolveLayout(GameProcessContext process)
     {
         try
@@ -146,14 +227,47 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
                 var executableHash = ComputeSha256(process.ExecutablePath);
                 var assemblyHash = ComputeSha256(assembly);
                 var metadataHash = ComputeSha256(metadata);
-                return SupportedBuilds.FirstOrDefault(layout => layout.Matches(executableHash, assemblyHash, metadataHash))
-                       ?? throw new InvalidOperationException(
-                           "当前 WorldApart 构建尚未配置专属修改布局。为避免误写，未知版本不会套用旧偏移。");
+                var identity = new GameBuildIdentity(executableHash, string.Empty, assemblyHash, metadataHash);
+                if (TryResolveLayout(process, identity, out var layout)) return layout;
+                throw new InvalidOperationException(
+                    "当前 WorldApart 构建尚未通过专属修改布局校验。为避免误写，未知版本不会套用旧偏移。");
             });
         }
         catch (FileNotFoundException exception)
         {
             throw new InvalidOperationException("当前 WorldApart 安装缺少专属修改所需的 IL2CPP 文件。", exception);
+        }
+    }
+
+    private static bool MatchesStructuralSignatures(int processId, BuildLayout layout)
+    {
+        if (layout.StructuralSignatures.Count == 0) return false;
+        try
+        {
+            using var process = Process.GetProcessById(processId);
+            var module = process.Modules.Cast<ProcessModule>().SingleOrDefault(candidate =>
+                string.Equals(candidate.ModuleName, "GameAssembly.dll", StringComparison.OrdinalIgnoreCase));
+            if (module is null) return false;
+            var handle = OpenProcess(0x0010 | 0x0400, false, processId);
+            if (handle == IntPtr.Zero) return false;
+            try
+            {
+                var moduleBase = unchecked((ulong)module.BaseAddress.ToInt64());
+                foreach (var signature in layout.StructuralSignatures)
+                {
+                    var actual = new byte[signature.Bytes.Length];
+                    if (!ReadProcessMemory(handle, (IntPtr)(long)(moduleBase + signature.Rva), actual,
+                            (nuint)actual.Length, out var read) || read != (nuint)actual.Length ||
+                        !actual.AsSpan().SequenceEqual(signature.Bytes))
+                        return false;
+                }
+                return true;
+            }
+            finally { CloseHandle(handle); }
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -164,14 +278,6 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
         private const uint MemRelease = 0x8000;
         private const uint PageExecuteReadWrite = 0x40;
         private const uint Infinite = 0xFFFFFFFF;
-
-        private const ulong TablesGetCurrent = 0x14B3DB0;
-        private const ulong L10nTextGetValue = 0x18CA6B0;
-        private const ulong GameStoreManagerGetCurrentPlayer = 0xDEBE90;
-        private const ulong GameStoreManagerGetCurrentStore = 0xDEBF80;
-        private const ulong GameStoreSaveAutoSlotImmediately = 0xDEF5D0;
-        private const ulong BagSort = 0xEA1930;
-        private const ulong BagRefreshRedDots = 0xEA06E0;
 
         private readonly Process _process;
         private readonly IntPtr _handle;
@@ -184,7 +290,7 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
         private ulong _player;
         private ulong _tables;
 
-        public Session(int processId, BuildLayout layout)
+        public Session(int processId, BuildLayout layout, bool initializeRoots = true)
         {
             _layout = layout;
             _process = Process.GetProcessById(processId);
@@ -202,14 +308,14 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
             _threadAttach = _moduleBase + exports.GetRequired("il2cpp_thread_attach");
             _threadDetach = _moduleBase + exports.GetRequired("il2cpp_thread_detach");
             _classGetMethodFromName = _moduleBase + exports.GetRequired("il2cpp_class_get_method_from_name");
-            RefreshRoots();
+            if (initializeRoots) RefreshRoots();
         }
 
         private void RefreshRoots()
         {
-            _player = CallPointerFunction(_moduleBase + GameStoreManagerGetCurrentPlayer);
+            _player = CallPointerFunction(_moduleBase + _layout.GameStoreManagerGetCurrentPlayer);
             if (_player == 0) throw new InvalidOperationException("当前玩家存档尚未加载。请进入可操作的游戏存档后重试。");
-            _tables = CallPointerFunction(_moduleBase + TablesGetCurrent);
+            _tables = CallPointerFunction(_moduleBase + _layout.TablesGetCurrent);
             if (_tables == 0) throw new InvalidOperationException("WorldApart 配置表尚未加载完成，请稍后重试。");
         }
 
@@ -232,6 +338,20 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
                 })
                 .OrderBy(item => item.DisplayName, StringComparer.CurrentCulture)
                 .ToList();
+        }
+
+        public GameDeclaredVersionInfo ReadGameDeclaredVersion()
+        {
+            if (_layout.ApplicationGetVersion == 0)
+                return new GameDeclaredVersionInfo(string.Empty, string.Empty, string.Empty);
+            var version = ReadManagedString(CallPointerFunction(_moduleBase + _layout.ApplicationGetVersion));
+            var productName = _layout.ApplicationGetProductName == 0
+                ? string.Empty
+                : ReadManagedString(CallPointerFunction(_moduleBase + _layout.ApplicationGetProductName));
+            var buildGuid = _layout.ApplicationGetBuildGuid == 0
+                ? string.Empty
+                : ReadManagedString(CallPointerFunction(_moduleBase + _layout.ApplicationGetBuildGuid));
+            return new GameDeclaredVersionInfo(version, productName, buildGuid);
         }
 
         public AdapterInventoryItem WriteInventory(int itemId, int targetValue)
@@ -305,7 +425,7 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
             {
                 var id = ReadInt32(config + 0x10);
                 if (!requested.Contains(id)) continue;
-                var value = CallPointerFunction(_moduleBase + L10nTextGetValue, config + 0x18);
+                var value = CallPointerFunction(_moduleBase + _layout.L10nTextGetValue, config + 0x18);
                 var text = ReadManagedString(value);
                 if (!string.IsNullOrWhiteSpace(text)) result[id] = text;
                 if (result.Count == requested.Count) break;
@@ -490,14 +610,14 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
                 code.Emit(BitConverter.GetBytes(write.Value));
             }
 
-            EmitOperation(code, request, moduleBase);
+            EmitOperation(code, request, moduleBase, layout);
 
             code.Emit(0x33, 0xC9, 0x33, 0xD2);
-            code.MovRax(moduleBase + GameStoreManagerGetCurrentStore); code.CallRax();
+            code.MovRax(moduleBase + layout.GameStoreManagerGetCurrentStore); code.CallRax();
             code.Emit(0x48, 0x85, 0xC0);
             var noStoreJump = code.EmitNearConditionalJump(0x84);
             code.Emit(0x48, 0x89, 0xC1, 0x33, 0xD2);
-            code.MovRax(moduleBase + GameStoreSaveAutoSlotImmediately); code.CallRax();
+            code.MovRax(moduleBase + layout.GameStoreSaveAutoSlotImmediately); code.CallRax();
             code.MovRdx(saveResultAddress); code.Emit(0x48, 0x89, 0x02);
             code.MovRax(statusAddress); code.Emit(0xC7, 0x00, 0x03, 0x00, 0x00, 0x00);
             var afterFailureJump = code.EmitNearJump();
@@ -519,25 +639,25 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
             return code.ToArray();
         }
 
-        private static void EmitOperation(Emitter code, MainThreadRequest request, ulong moduleBase)
+        private static void EmitOperation(Emitter code, MainThreadRequest request, ulong moduleBase, BuildLayout layout)
         {
             switch (request.Operation)
             {
                 case MainThreadOperation.InventoryRefresh:
                     code.MovRcx(request.Owner); code.Emit(0x33, 0xD2);
-                    code.MovRax(moduleBase + BagSort); code.CallRax();
+                    code.MovRax(moduleBase + layout.BagSort); code.CallRax();
                     code.MovRcx(request.Owner); code.Emit(0x33, 0xD2);
-                    code.MovRax(moduleBase + BagRefreshRedDots); code.CallRax();
+                    code.MovRax(moduleBase + layout.BagRefreshRedDots); code.CallRax();
                     break;
                 case MainThreadOperation.None:
                     break;
                 default:
-                    EmitCharacterOperation(code, request, moduleBase);
+                    EmitCharacterOperation(code, request, moduleBase, layout);
                     break;
             }
         }
 
-        static partial void EmitCharacterOperation(Emitter code, MainThreadRequest request, ulong moduleBase);
+        static partial void EmitCharacterOperation(Emitter code, MainThreadRequest request, ulong moduleBase, BuildLayout layout);
 
         private static void EmitOriginalAudioUpdate(
             Emitter code,
@@ -696,16 +816,35 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
         string ExecutableSha256,
         string GameAssemblySha256,
         string MetadataSha256,
+        ulong TablesGetCurrent,
+        ulong L10nTextGetValue,
+        ulong GameStoreManagerGetCurrentPlayer,
+        ulong GameStoreManagerGetCurrentStore,
+        ulong GameStoreSaveAutoSlotImmediately,
+        ulong BagSort,
+        ulong BagRefreshRedDots,
         ulong AudioUpdate,
         ulong AudioServiceUpdate,
         ulong RaiseNullReference,
-        byte[] ExpectedAudioUpdate)
+        byte[] ExpectedAudioUpdate,
+        ulong PlayerSetInteractAttributeValue,
+        ulong CombatSetBaseAttribute,
+        ulong TalentMarkSpiritRootDirty,
+        ulong TalentRebuildSpiritRoot,
+        ulong IntDictionarySetItem,
+        ulong ApplicationGetVersion,
+        ulong ApplicationGetProductName,
+        ulong ApplicationGetBuildGuid,
+        bool AllowStructuralMatch,
+        IReadOnlyList<CodeSignature> StructuralSignatures)
     {
         public bool Matches(string executable, string assembly, string metadata) =>
             string.Equals(ExecutableSha256, executable, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(GameAssemblySha256, assembly, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(MetadataSha256, metadata, StringComparison.OrdinalIgnoreCase);
     }
+
+    private sealed record CodeSignature(ulong Rva, byte[] Bytes);
 
     private sealed record BagRow(ulong Address, int ItemId, int Count);
     private sealed record MemoryWrite(ulong Address, int Value);

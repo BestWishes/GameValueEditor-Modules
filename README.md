@@ -29,6 +29,12 @@ catalog.json
 - 背包物品：实时读取、筛选和修改物品总数，并调用游戏自身保存流程。
 - 人物属性：列出人物及五维属性，修改后立即刷新游戏界面；该实验功能仅本次游戏运行有效，关闭游戏后失效，不锁定、不自动重应用。
 
+`game.worldapart` v1.1.0：
+
+- 背包物品与人物属性：每次重新定位当前存档对象，在 Unity 主线程修改，调用游戏自动存档并回读。
+- 同时支持两个已验证构建；新版布局对后续小版本使用完整关键函数签名验证，未知布局安全失败。
+- 向宿主提供游戏自报版本、产品名和构建 GUID，和 Steam Build ID、引擎文件版本分开显示。
+
 ## 构建
 
 要求 Windows x64 与 .NET 8 SDK。
@@ -37,7 +43,7 @@ catalog.json
 dotnet build GameValueEditor.Modules.slnx -c Release
 ./scripts/validate-modules.ps1 -SkipCatalog
 ./scripts/publish-fzzml.ps1 -Version 2.0.1
-./scripts/publish-worldapart.ps1 -Version 1.0.1
+./scripts/publish-worldapart.ps1 -Version 1.1.0
 ```
 
 发布脚本从各游戏的 `module.json` 生成包内清单，将自动维护的贡献者信息注入包中，生成 ZIP，并把同一份清单与真实 SHA-256 同步到 `catalog.json`。`module.json` 是兼容构建、编辑器列表和游戏身份的唯一人工维护来源。

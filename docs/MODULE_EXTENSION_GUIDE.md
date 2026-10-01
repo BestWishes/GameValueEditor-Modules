@@ -13,6 +13,7 @@
 - `IGameAdapter`：游戏包身份、构建匹配、编辑器描述与快捷入口读写。
 - `IInventoryGameAdapter`：标准 `collection` 背包/集合界面。
 - `ICharacterAttributesGameAdapter`：标准 `master-detail` 人物属性界面。
+- `IGameVersionMetadataProvider`：可选的游戏自报版本、产品名和构建 GUID；只用于帮助用户识别版本，不能代替安全构建验证。
 - `GameEditorDescriptor`：编辑器 ID、显示名、类型、顺序、描述和 `SessionOnly`。
 - `ModuleFieldKey`：由编辑器 ID、实体 ID 和字段 ID 组成快捷入口语义键。
 
@@ -44,7 +45,11 @@ Pull Request 自动流程会在只读权限下检查生成文件未被手改、�
 
 ## 构建兼容
 
-至少核对 EXE SHA-256；Unity IL2CPP 游戏应同时核对 `GameAssembly.dll` 与 `global-metadata.dat`。不得使用窗口标题、显示版本或文件时间代替构建身份。
+首选核对 EXE SHA-256；Unity IL2CPP 游戏应同时核对 `GameAssembly.dll` 与 `global-metadata.dat`。不得使用窗口标题、显示版本或文件时间代替构建身份。
+
+只有在已经证明小版本的对象布局与关键机器码全部不变时，才可提供结构签名回退。签名集合必须覆盖所有根对象 getter、配置表和本地化读取、业务写入函数、刷新/保存函数、主线程钩子以及模块实际使用的游戏版本函数；任一签名不一致就拒绝适配。不能只核对一两个“看起来稳定”的序言，更不能使用通配偏移。
+
+模块中心目录先按 `processNames` 让客户端发现当前游戏的最新包，再把精确 `compatibleBuilds` 作为“服务器已明确收录”的提示。目录未登记当前哈希时仍可下载安装，真正启用前必须由模块 `Supports` 对精确哈希或完整结构签名作最终判断。
 
 游戏包可以支持多个精确构建。某个编辑模块若只支持其中一部分构建，必须在自己的能力判断中安全失败，让宿主显示“当前构建暂不支持”，不能影响同包其他编辑器。
 
@@ -67,7 +72,7 @@ Unity/IL2CPP 操作通常需要主线程。一次性挂接应校验函数序言�
 - `game.worldapart.inventory`：以物品配置 ID 为实体语义身份，重新定位当前玩家背包中的堆叠，修改后刷新背包并调用游戏自动存档。
 - `game.worldapart.character-attributes`：以当前玩家和属性类别/配置 ID 为语义身份，覆盖资源、基础属性、探索属性、五行灵根与战斗属性。`CombatModel.CultivateExp` 映射为“基础属性 · 修为”，`CombatModel.CultivateReserveExp` 映射为修炼/突破界面的“资源 · 灵气”，不能与人物面板的“基础属性 · 灵力”混用。
 
-该游戏的经验可复用于其他 Unity IL2CPP 适配器：只读查询线程不能调用隐含主线程依赖的聚合 getter；能直接表示目标含义的持久化字典应优先于临时界面缓存；缺失的五行灵根键必须通过字典自己的 `set_Item` 写入，不能假设固定容量后手工填槽；每次写入都要在游戏主线程执行保存并回读。模块只提供数据与语义名称，人物属性名称筛选由宿主统一实现。支持范围同时锁定 EXE、`GameAssembly.dll` 与 metadata 指纹，任何一个变化都拒绝套用旧布局。
+该游戏的经验可复用于其他 Unity IL2CPP 适配器：只读查询线程不能调用隐含主线程依赖的聚合 getter；能直接表示目标含义的持久化字典应优先于临时界面缓存；缺失的五行灵根键必须通过字典自己的 `set_Item` 写入，不能假设固定容量后手工填槽；每次写入都要在游戏主线程执行保存并回读。模块只提供数据与语义名称，人物属性名称筛选由宿主统一实现。v1.1.0 同时登记两个实机验证构建，并把全部版本相关 RVA 收进 `BuildLayout`。新版布局允许在三重哈希变化时执行完整结构签名验证；任一读取、写入、保存、主线程钩子或版本入口变化都会拒绝套用，不能因为 EXE 相同就默认兼容。模块还通过 Unity `Application` API 提供游戏自报版本、产品名和构建 GUID，宿主与 Steam Build ID、引擎文件版本分开显示。
 
 ## 验收清单
 

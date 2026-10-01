@@ -86,6 +86,20 @@ public interface ICharacterAttributesGameAdapter : IGameAdapter
         int targetValue);
 }
 
+/// <summary>
+/// Optional provider for version values declared by the game itself. The host stores these
+/// separately from platform build identifiers and executable or engine file versions.
+/// </summary>
+public interface IGameVersionMetadataProvider : IGameAdapter
+{
+    GameDeclaredVersionInfo ReadGameVersionMetadata(GameProcessContext process);
+}
+
+public sealed record GameDeclaredVersionInfo(
+    string Version,
+    string ProductName,
+    string BuildGuid);
+
 public sealed record AdapterFieldValue(string FieldKey, string DisplayValue, string Status);
 
 public sealed record AdapterInventoryItem(string FieldKey, string DisplayName, long Count)

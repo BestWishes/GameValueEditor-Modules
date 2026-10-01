@@ -110,12 +110,6 @@ public sealed partial class WorldApartGameAdapter
 
     private sealed partial class Session
     {
-        private const ulong PlayerSetInteractAttributeValue = 0xDC5EE0;
-        private const ulong CombatSetBaseAttribute = 0xE67710;
-        private const ulong TalentMarkSpiritRootDirty = 0xE97860;
-        private const ulong TalentRebuildSpiritRoot = 0xE979C0;
-        private const ulong IntDictionarySetItem = 0x4ED6B60;
-
         public AdapterCharacterItem ReadCharacter()
         {
             RefreshRoots();
@@ -338,7 +332,7 @@ public sealed partial class WorldApartGameAdapter
             foreach (var config in configs)
             {
                 var id = ReadInt32(config + 0x10);
-                var value = CallPointerFunction(_moduleBase + L10nTextGetValue, config + 0x18);
+                var value = CallPointerFunction(_moduleBase + _layout.L10nTextGetValue, config + 0x18);
                 var text = ReadManagedString(value);
                 result[id] = string.IsNullOrWhiteSpace(text) ? $"探索属性 #{id}" : text;
             }
@@ -352,7 +346,7 @@ public sealed partial class WorldApartGameAdapter
             return checked((int)MathF.Round(value, MidpointRounding.AwayFromZero));
         }
 
-        static partial void EmitCharacterOperation(Emitter code, MainThreadRequest request, ulong moduleBase)
+        static partial void EmitCharacterOperation(Emitter code, MainThreadRequest request, ulong moduleBase, BuildLayout layout)
         {
             switch (request.Operation)
             {
@@ -361,10 +355,10 @@ public sealed partial class WorldApartGameAdapter
                     code.MovEdx(request.AttributeId);
                     code.MovR8d(request.TargetValue);
                     code.Emit(0x45, 0x33, 0xC9);
-                    code.MovRax(moduleBase + PlayerSetInteractAttributeValue); code.CallRax();
+                    code.MovRax(moduleBase + layout.PlayerSetInteractAttributeValue); code.CallRax();
                     break;
                 case MainThreadOperation.SetCombatBaseAttribute:
-                    EmitCombatValueCall(code, request, moduleBase + CombatSetBaseAttribute);
+                    EmitCombatValueCall(code, request, moduleBase + layout.CombatSetBaseAttribute);
                     break;
                 case MainThreadOperation.SetSpiritRoot:
                     code.MovRax(request.Owner);
@@ -372,11 +366,11 @@ public sealed partial class WorldApartGameAdapter
                     code.MovEdx(request.AttributeId);
                     code.MovR8d(request.TargetValue);
                     code.MovR9(request.MethodInfo);
-                    code.MovRax(moduleBase + IntDictionarySetItem); code.CallRax();
+                    code.MovRax(moduleBase + layout.IntDictionarySetItem); code.CallRax();
                     code.MovRcx(request.Owner); code.Emit(0x33, 0xD2);
-                    code.MovRax(moduleBase + TalentMarkSpiritRootDirty); code.CallRax();
+                    code.MovRax(moduleBase + layout.TalentMarkSpiritRootDirty); code.CallRax();
                     code.MovRcx(request.Owner); code.Emit(0x33, 0xD2);
-                    code.MovRax(moduleBase + TalentRebuildSpiritRoot); code.CallRax();
+                    code.MovRax(moduleBase + layout.TalentRebuildSpiritRoot); code.CallRax();
                     break;
             }
         }

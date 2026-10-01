@@ -1,6 +1,6 @@
 # WorldApart 专属修改模块
 
-稳定游戏 ID：`game.worldapart`，当前模块版本：`1.0.1`。
+稳定游戏 ID：`game.worldapart`，当前模块版本：`1.1.0`。
 
 ## 游戏内编辑模块
 
@@ -17,7 +17,7 @@
 
 ## 兼容性与安全边界
 
-模块只接受 `module.json` 中实现代码明确登记的 EXE、`GameAssembly.dll` 与 `global-metadata.dat` 三重指纹。未知构建会拒绝写入，不能用相似版本的偏移猜测兼容。
+模块优先接受 `module.json` 中实现代码明确登记的 EXE、`GameAssembly.dll` 与 `global-metadata.dat` 三重指纹。新版布局另有保守结构签名回退：只有根对象、配置表、本地化、业务写入、刷新、保存、主线程钩子和游戏版本读取等全部关键函数的机器码都与已验证布局一致时才会启用；任一签名变化就拒绝写入。
 
 当前首个受支持构建：
 
@@ -25,4 +25,12 @@
 - GameAssembly SHA-256：`E4BFA837BD5F43BF5FFBE3E28C80B40CD3E20B24CE63941CE2280874DF2FA056`
 - metadata SHA-256：`55F65FE395395CAA4C3C8DE6F874107AB92742CA638F1E0F77ECB609A22154FA`
 
-更新游戏后，应先按扩展指南重新验证对象布局、主线程入口、界面刷新和存档回读，再新增一个精确构建布局。
+当前第二个受支持构建（Steam Build ID `25617557`，游戏自报版本 `0.34.7343955`）：
+
+- EXE SHA-256：`35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835`
+- GameAssembly SHA-256：`EDE8A956051C0C831F79E0874AFF28297F41D3FA18C18AD2CA2FF16C33D0938D`
+- metadata SHA-256：`BBECA25F98CFC56BFE48A5BD6DC90B9AADFEB1A6BB8F0DC03CA8DA2EF26DBDBC`
+
+游戏安装目录不是兼容身份。移动到其他目录或 Steam 库后，只要当前运行进程通过相同构建校验，模块仍可使用；宿主会在重新连接后刷新保存路径。
+
+更新游戏后，应先按扩展指南重新验证对象布局、关键函数签名、主线程入口、界面刷新和存档回读。布局变化时新增精确 `BuildLayout`；只有哈希变化且完整签名不变时才使用现有布局回退。
