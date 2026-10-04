@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.4.2",
+    [string]$Version = "0.5.0",
     [switch]$SkipCatalog
 )
 

@@ -46,7 +46,7 @@ $manifestPath = Join-Path $gameRoot "module.json"
 $contributorsPath = Join-Path $gameRoot "contributors.generated.json"
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $contributorsDocument = Get-Content -LiteralPath $contributorsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($manifest.version -ne $Version -or $manifest.hostApiVersion -notin @(2, 3)) {
+if ($manifest.version -ne $Version -or $manifest.hostApiVersion -notin @(2, 3, 4)) {
     throw "module.json version or Host API does not match the requested package."
 }
 if ($contributorsDocument.moduleId -ne $manifest.id) {
@@ -68,7 +68,7 @@ if (-not $SkipCatalog) {
     $catalogPath = Join-Path $repoRoot "catalog.json"
     $catalog = Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $catalog.schemaVersion = 3
-    $catalog.hostApiVersion = 3
+    $catalog.hostApiVersion = 4
     $entry = $catalog.modules | Where-Object id -eq $manifest.id | Select-Object -First 1
     if ($null -eq $entry) {
         $entry = [pscustomobject]@{}

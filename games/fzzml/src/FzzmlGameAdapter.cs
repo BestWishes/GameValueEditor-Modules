@@ -10,8 +10,12 @@ using GameValueEditor.ModuleSdk;
 
 namespace GameValueEditor.Modules.Fzzml;
 
-public sealed partial class FzzmlGameAdapter : IInventoryGameAdapter, ICharacterAttributesGameAdapter
+public sealed partial class FzzmlGameAdapter :
+    IInventoryGameAdapter,
+    ICharacterAttributesGameAdapter,
+    IGameEditorPageProvider
 {
+    private const string InventoryEditorId = "game.fzzml.inventory";
     private static readonly ConcurrentDictionary<string, BuildLayout> LayoutCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly IReadOnlyList<BuildLayout> SupportedBuilds =
     [
@@ -43,10 +47,15 @@ public sealed partial class FzzmlGameAdapter : IInventoryGameAdapter, ICharacter
     public IReadOnlyList<string> LegacyIds => ["game.fzzml.inventory.v1"];
     public IReadOnlyList<GameEditorDescriptor> Editors { get; } =
     [
-        new("game.fzzml.inventory", "背包物品", GameEditorKind.Collection, 100,
+        new(InventoryEditorId, "背包物品", GameEditorKind.Collection, 100,
             "实时读取和修改背包物品总数，并调用游戏自身保存流程。"),
-        new("game.fzzml.character-attributes", "人物属性", GameEditorKind.MasterDetail, 200,
+        new(CharacterEditorId, "人物属性", GameEditorKind.MasterDetail, 200,
             "按人物稳定 ID 修改当前运行中的五维属性；关闭游戏后失效。", SessionOnly: true)
+    ];
+    public IReadOnlyList<GameEditorPageRegistration> EditorPages { get; } =
+    [
+        new(InventoryEditorId, GameEditorPageRole.Inventory),
+        new(CharacterEditorId, GameEditorPageRole.CharacterAttributes)
     ];
 
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint)

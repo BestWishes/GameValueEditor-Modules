@@ -125,3 +125,10 @@
 - 本版本不改变 Last Epoch 的游戏内读写逻辑，只修正宿主协议声明：模块依赖 `IEntityEditorsGameAdapter`，因此必须声明 Host API 3，不能继续伪装成 API 2 可加载。
 - SDK 产品版本提升为 3.0.0，同时固定 CLR `AssemblyVersion` 为 2.0.0.0，使新宿主仍能绑定不依赖新接口的既有 API 2 模块；真正的能力门槛由 `module.json` 的 `hostApiVersion` 控制。
 - 发布前必须使用本地脚本完成全模块构建、清单校验和仅含 DLL/`module.json` 的包内容检查；GitHub Actions 不再作为发布前提。
+
+## v0.5.0 Host API 4 页面归属
+
+- 模块通过 `IGameEditorPageProvider` 明确拥有人物属性、装备、资源、异界进度和世界功能五个页面；主程序只渲染标准页面模板，不再按 Last Epoch 编辑器 ID 后缀创建固定 Tab。
+- 异界页面的无记录提示由模块注册，避免主程序包含 Last Epoch 专属文案。
+- 人物页面通过 `IGameEditorFieldPolicyProvider` 区分持久化点数与仅本次运行的属性和倍率，运行期字段不再允许锁定或自动重应用。
+- 本版本不改变任何 Last Epoch 内存定位、主线程写入、刷新、保存或回读实现。

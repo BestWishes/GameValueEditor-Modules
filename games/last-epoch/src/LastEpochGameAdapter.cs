@@ -61,7 +61,9 @@ public sealed record LastEpochGoldQuantityDiagnostics(
 public sealed class LastEpochGameAdapter :
     ICharacterAttributesGameAdapter,
     IEntityEditorsGameAdapter,
-    IGameVersionMetadataProvider
+    IGameVersionMetadataProvider,
+    IGameEditorPageProvider,
+    IGameEditorFieldPolicyProvider
 {
     internal const string CharacterEditorId = "game.last-epoch.character-attributes";
     internal const string EquipmentEditorId = "game.last-epoch.equipment";
@@ -80,6 +82,23 @@ public sealed class LastEpochGameAdapter :
         new(MonolithEditorId, "异界进度", GameEditorKind.MasterDetail, 500, "最高腐化与已有时间线进度。"),
         new(WorldEditorId, "世界功能", GameEditorKind.MasterDetail, 600, "调整当前摄像头视野大小。", true)
     ];
+    public IReadOnlyList<GameEditorPageRegistration> EditorPages { get; } =
+    [
+        new(CharacterEditorId, GameEditorPageRole.CharacterAttributes),
+        new(EquipmentEditorId, GameEditorPageRole.Entity),
+        new(MaterialsEditorId, GameEditorPageRole.Entity),
+        new(MonolithEditorId, GameEditorPageRole.Entity,
+            "当前角色尚无异界时间线记录；进入异界后刷新即可显示。"),
+        new(WorldEditorId, GameEditorPageRole.Entity)
+    ];
+
+    public GameEditorFieldPolicy? GetFieldPolicy(string editorId, string entityId, string fieldId)
+    {
+        if (!string.Equals(editorId, CharacterEditorId, StringComparison.Ordinal)) return null;
+        return fieldId is "skill-points" or "specialisation-points"
+            ? new(false, true)
+            : new(true, false);
+    }
 
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint)
     {

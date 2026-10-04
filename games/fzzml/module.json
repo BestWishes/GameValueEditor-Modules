@@ -1,6 +1,6 @@
 {
   "id": "game.fzzml",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "displayName": "放置斩魔录专属修改模块",
   "gameDisplayName": "放置斩魔录",
   "description": "包含背包物品与人物属性两个游戏内编辑模块。",
@@ -8,7 +8,7 @@
     "game.fzzml.inventory.v1"
   ],
   "assemblyFile": "GameValueEditor.Modules.Fzzml.dll",
-  "hostApiVersion": 2,
+  "hostApiVersion": 4,
   "processNames": [
     "fzzml"
   ],

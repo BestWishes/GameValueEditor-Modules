@@ -10,7 +10,11 @@ using GameValueEditor.ModuleSdk;
 
 namespace GameValueEditor.Modules.WorldApart;
 
-public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, ICharacterAttributesGameAdapter, IGameVersionMetadataProvider
+public sealed partial class WorldApartGameAdapter :
+    IInventoryGameAdapter,
+    ICharacterAttributesGameAdapter,
+    IGameVersionMetadataProvider,
+    IGameEditorPageProvider
 {
     private const string InventoryEditorId = "game.worldapart.inventory";
     private const string CharacterEditorId = "game.worldapart.character-attributes";
@@ -99,6 +103,11 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
             "按稳定物品 ID 实时读取和修改背包物品总数，并调用游戏自身保存流程。"),
         new(CharacterEditorId, "人物属性", GameEditorKind.MasterDetail, 200,
             "修改当前玩家的资源、基础属性、探索属性、五行灵根和战斗属性，并调用游戏自身保存流程。")
+    ];
+    public IReadOnlyList<GameEditorPageRegistration> EditorPages { get; } =
+    [
+        new(InventoryEditorId, GameEditorPageRole.Inventory),
+        new(CharacterEditorId, GameEditorPageRole.CharacterAttributes)
     ];
 
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint) =>

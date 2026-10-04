@@ -24,18 +24,18 @@ catalog.json
 
 ## 当前模块
 
-`game.fzzml` v2.0.1：
+`game.fzzml` v2.1.0：
 
 - 背包物品：实时读取、筛选和修改物品总数，并调用游戏自身保存流程。
 - 人物属性：列出人物及五维属性，修改后立即刷新游戏界面；该实验功能仅本次游戏运行有效，关闭游戏后失效，不锁定、不自动重应用。
 
-`game.worldapart` v1.2.0：
+`game.worldapart` v1.3.0：
 
 - 背包物品与人物属性：每次重新定位当前存档对象，在 Unity 主线程修改，调用游戏自动存档并回读。
 - 同时支持两个已验证构建；第三方发行版仅替换启动 EXE 时，以一致的 `GameAssembly.dll` 与 metadata 识别原布局，其他未知构建继续使用完整关键函数签名验证并安全失败。
 - 向宿主提供游戏自报版本、产品名和构建 GUID，和 Steam Build ID、引擎文件版本分开显示。
 
-`game.last-epoch` v0.4.2：
+`game.last-epoch` v0.5.0：
 
 - 只支持 Last Epoch 完全离线模式。已登记精确构建直接识别；后续小版本会按 IL2CPP 类名、字段名和方法签名重新定位，并且只有完整语义结构校验通过才启用，结构不兼容时安全拒绝。
 - 人物属性提供剩余天赋点、剩余技能点、五维、移动速度、效果范围、两种冷却恢复、经验倍率、总物品掉落率、金币倍率及药剂掉落率；点数走存档权威链，运行期属性在游戏主线程进入真实消费或最终结算路径验证，不以模块自己的写入回读冒充生效。
@@ -50,9 +50,9 @@ catalog.json
 ```powershell
 dotnet build GameValueEditor.Modules.slnx -c Release
 ./scripts/validate-modules.ps1 -SkipCatalog
-./scripts/publish-fzzml.ps1 -Version 2.0.1
-./scripts/publish-last-epoch.ps1 -Version 0.4.2 -SkipCatalog
-./scripts/publish-worldapart.ps1 -Version 1.2.0
+./scripts/publish-fzzml.ps1 -Version 2.1.0 -SkipCatalog
+./scripts/publish-last-epoch.ps1 -Version 0.5.0 -SkipCatalog
+./scripts/publish-worldapart.ps1 -Version 1.3.0 -SkipCatalog
 ```
 
 发布脚本从各游戏的 `module.json` 生成包内清单，将维护者生成的贡献者信息注入包中并生成 ZIP；不带 `-SkipCatalog` 时，才会把同一份清单与真实 SHA-256 同步到 `catalog.json`。`module.json` 是兼容构建、编辑器列表和游戏身份的唯一人工维护来源。
