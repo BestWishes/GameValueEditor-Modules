@@ -1,17 +1,17 @@
 {
   "schemaVersion": 3,
-  "hostApiVersion": 3,
+  "hostApiVersion": 4,
   "modules": [
     {
       "id": "game.fzzml",
       "legacyIds": [
         "game.fzzml.inventory.v1"
       ],
-      "version": "2.0.1",
+      "version": "2.1.0",
       "displayName": "放置斩魔录专属修改模块",
       "gameDisplayName": "放置斩魔录",
       "description": "包含背包物品与人物属性两个游戏内编辑模块。",
-      "hostApiVersion": 2,
+      "hostApiVersion": 4,
       "processNames": [
         "fzzml"
       ],
@@ -58,16 +58,16 @@
           "latestContributionDate": "2026-09-27"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.0.1/GameValueEditor.Module.Fzzml-v2.0.1.zip",
-      "sha256": "74344E157E4FD4096E434A6724BAD650064E5D042BAEC17A2727D38C697C6011"
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.0/GameValueEditor.Module.Fzzml-v2.1.0.zip",
+      "sha256": "F6C193EB2657E8378B894D29C68B9E2E5C6F8DF81AC6DD69FF3C069E72E096F8"
     },
     {
       "id": "game.worldapart",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "displayName": "WorldApart 专属修改模块",
       "gameDisplayName": "WorldApart",
       "description": "包含背包物品与人物属性两个可持久化的游戏内编辑模块。",
-      "hostApiVersion": 2,
+      "hostApiVersion": 4,
       "processNames": [
         "WorldApart"
       ],
@@ -109,16 +109,16 @@
           "latestContributionDate": "2026-09-28"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.2.0/GameValueEditor.Module.WorldApart-v1.2.0.zip",
-      "sha256": "26B2E85C5D1524948EC03DD3F71806F99875899434B16A37A9882FCC528318B9"
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.0/GameValueEditor.Module.WorldApart-v1.3.0.zip",
+      "sha256": "61CD621FFD46948F3C225BF5C57B522D68F21788A6791FD50FB2403C90449923"
     },
     {
       "id": "game.last-epoch",
-      "version": "0.4.2",
+      "version": "0.5.0",
       "displayName": "Last Epoch 离线专属修改模块",
       "gameDisplayName": "最后纪元",
       "description": "仅支持离线模式：人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、完整资源槽位、异界进度与摄像头视野；小版本通过 IL2CPP 语义结构校验后自动兼容。",
-      "hostApiVersion": 3,
+      "hostApiVersion": 4,
       "processNames": [
         "Last Epoch"
       ],
@@ -176,9 +176,18 @@
           "sessionOnly": true
         }
       ],
-      "contributors": [],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.4.2/GameValueEditor.Module.LastEpoch-v0.4.2.zip",
-      "sha256": "4336289D3D43B46A4D9AB1F9E1CFE7306B3A1950A0ABBA98453E0E6A9419D2BB"
+      "contributors": [
+        {
+          "githubId": 9667417,
+          "githubLogin": "BestWishes",
+          "displayName": "Felix_JiangHuSect",
+          "profileUrl": "https://github.com/BestWishes",
+          "firstContributionDate": "2026-10-04",
+          "latestContributionDate": "2026-10-05"
+        }
+      ],
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.0/GameValueEditor.Module.LastEpoch-v0.5.0.zip",
+      "sha256": "4DD5899CC64277740DAD09A90839A3CADC1123FC744884038F961C5013619034"
     }
   ]
 }
