@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "hostApiVersion": 2,
+  "hostApiVersion": 3,
   "modules": [
     {
       "id": "game.fzzml",
@@ -114,11 +114,11 @@
     },
     {
       "id": "game.last-epoch",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "displayName": "Last Epoch 离线专属修改模块",
       "gameDisplayName": "最后纪元",
       "description": "仅支持离线模式：人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、完整资源槽位、异界进度与摄像头视野；小版本通过 IL2CPP 语义结构校验后自动兼容。",
-      "hostApiVersion": 2,
+      "hostApiVersion": 3,
       "processNames": [
         "Last Epoch"
       ],
@@ -177,8 +177,8 @@
         }
       ],
       "contributors": [],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.4.1/GameValueEditor.Module.LastEpoch-v0.4.1.zip",
-      "sha256": "CBF859687F0179501DCE4221DAC7216106472A94EA8C73D0AE22BBA27AF9C2A7"
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.4.2/GameValueEditor.Module.LastEpoch-v0.4.2.zip",
+      "sha256": "4336289D3D43B46A4D9AB1F9E1CFE7306B3A1950A0ABBA98453E0E6A9419D2BB"
     }
   ]
 }
