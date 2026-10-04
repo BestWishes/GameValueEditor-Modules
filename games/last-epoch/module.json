@@ -1,0 +1,36 @@
+{
+  "id": "game.last-epoch",
+  "version": "0.4.1",
+  "displayName": "Last Epoch 离线专属修改模块",
+  "gameDisplayName": "最后纪元",
+  "description": "仅支持离线模式：人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、完整资源槽位、异界进度与摄像头视野；小版本通过 IL2CPP 语义结构校验后自动兼容。",
+  "assemblyFile": "GameValueEditor.Modules.LastEpoch.dll",
+  "hostApiVersion": 2,
+  "processNames": [
+    "Last Epoch"
+  ],
+  "compatibleBuilds": [
+    {
+      "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+      "gameAssemblySha256": "1B720BDE6C6010BF02DE2F9724BC4C5E524C192B29E5AA160852B7993ED45449",
+      "metadataSha256": "7FA4AC2A9B2A96BB084ED84EE4D6282FB73FF1AD00936AC1DDF8EA6FBA570B08"
+    },
+    {
+      "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+      "gameAssemblySha256": "502E32F1F31BC1979AC6C387FAEF1266A62AD29F5B573E6D9B51CB577A72F5F8",
+      "metadataSha256": "F50904BB4F148A4F4EA7239BE6029CD35669E37BE107178492381D67F2E1EE99"
+    },
+    {
+      "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+      "gameAssemblySha256": "FC83F941396282C0E489ED44FF4375130FB74F3C5D8CDF983696A9EFBDC9019A",
+      "metadataSha256": "A4F8B652DD3CCFCCE53E87B9ABCBA0ECDDF3798CF42C4C5F7C045DF3CACBF17D"
+    }
+  ],
+  "editors": [
+    { "id": "game.last-epoch.character-attributes", "displayName": "人物属性", "kind": "master-detail", "order": 200, "sessionOnly": false },
+    { "id": "game.last-epoch.equipment", "displayName": "装备编辑", "kind": "master-detail", "order": 300, "sessionOnly": false },
+    { "id": "game.last-epoch.materials", "displayName": "资源", "kind": "master-detail", "order": 400, "sessionOnly": false },
+    { "id": "game.last-epoch.monolith", "displayName": "异界进度", "kind": "master-detail", "order": 500, "sessionOnly": false },
+    { "id": "game.last-epoch.world", "displayName": "世界功能", "kind": "master-detail", "order": 600, "sessionOnly": true }
+  ]
+}

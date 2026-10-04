@@ -204,6 +204,13 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
             fingerprint.GameAssemblySha256,
             fingerprint.MetadataSha256))!;
         if (layout is not null) return true;
+        // Third-party distributions commonly replace only the launcher EXE. The IL2CPP code and
+        // metadata are the actual layout authority, so an unchanged pair is safe even when the
+        // executable hash differs or the install directory has moved.
+        layout = SupportedBuilds.FirstOrDefault(candidate => candidate.MatchesRuntimeContent(
+            fingerprint.GameAssemblySha256,
+            fingerprint.MetadataSha256))!;
+        if (layout is not null) return true;
         layout = SupportedBuilds.FirstOrDefault(candidate => candidate.AllowStructuralMatch &&
             MatchesStructuralSignatures(process.ProcessId, candidate))!;
         return layout is not null;
@@ -216,7 +223,7 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
             var root = Path.GetDirectoryName(process.ExecutablePath) ?? string.Empty;
             var executableName = Path.GetFileNameWithoutExtension(process.ExecutablePath);
             var assembly = Path.Combine(root, "GameAssembly.dll");
-            var metadata = Path.Combine(root, $"{executableName}_Data", "il2cpp_data", "Metadata", "global-metadata.dat");
+            var metadata = ResolveMetadataPath(root, executableName);
             var executableInfo = new FileInfo(process.ExecutablePath);
             var assemblyInfo = new FileInfo(assembly);
             var metadataInfo = new FileInfo(metadata);
@@ -237,6 +244,21 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
         {
             throw new InvalidOperationException("当前 WorldApart 安装缺少专属修改所需的 IL2CPP 文件。", exception);
         }
+    }
+
+    private static string ResolveMetadataPath(string root, string executableName)
+    {
+        var preferred = Path.Combine(root, $"{executableName}_Data", "il2cpp_data", "Metadata", "global-metadata.dat");
+        if (File.Exists(preferred)) return preferred;
+        var known = Path.Combine(root, "WorldApart_Data", "il2cpp_data", "Metadata", "global-metadata.dat");
+        if (File.Exists(known)) return known;
+        if (!Directory.Exists(root)) return preferred;
+        var candidates = Directory.EnumerateDirectories(root, "*_Data", SearchOption.TopDirectoryOnly)
+            .Select(directory => Path.Combine(directory, "il2cpp_data", "Metadata", "global-metadata.dat"))
+            .Where(File.Exists)
+            .Take(2)
+            .ToList();
+        return candidates.Count == 1 ? candidates[0] : preferred;
     }
 
     private static bool MatchesStructuralSignatures(int processId, BuildLayout layout)
@@ -840,6 +862,12 @@ public sealed partial class WorldApartGameAdapter : IInventoryGameAdapter, IChar
     {
         public bool Matches(string executable, string assembly, string metadata) =>
             string.Equals(ExecutableSha256, executable, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(GameAssemblySha256, assembly, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(MetadataSha256, metadata, StringComparison.OrdinalIgnoreCase);
+
+        public bool MatchesRuntimeContent(string assembly, string metadata) =>
+            !string.IsNullOrWhiteSpace(assembly) &&
+            !string.IsNullOrWhiteSpace(metadata) &&
             string.Equals(GameAssemblySha256, assembly, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(MetadataSha256, metadata, StringComparison.OrdinalIgnoreCase);
     }
