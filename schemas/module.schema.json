@@ -17,7 +17,7 @@
       "items": { "type": "string", "pattern": "^game\\.[a-z0-9.-]+$" }
     },
     "assemblyFile": { "type": "string", "pattern": "^[^/\\\\]+\\.dll$" },
-    "hostApiVersion": { "const": 2 },
+    "hostApiVersion": { "type": "integer", "minimum": 2, "maximum": 3 },
     "processNames": {
       "type": "array",
       "minItems": 1,

@@ -35,7 +35,7 @@ catalog.json
 - 同时支持两个已验证构建；第三方发行版仅替换启动 EXE 时，以一致的 `GameAssembly.dll` 与 metadata 识别原布局，其他未知构建继续使用完整关键函数签名验证并安全失败。
 - 向宿主提供游戏自报版本、产品名和构建 GUID，和 Steam Build ID、引擎文件版本分开显示。
 
-`game.last-epoch` v0.4.1：
+`game.last-epoch` v0.4.2：
 
 - 只支持 Last Epoch 完全离线模式。已登记精确构建直接识别；后续小版本会按 IL2CPP 类名、字段名和方法签名重新定位，并且只有完整语义结构校验通过才启用，结构不兼容时安全拒绝。
 - 人物属性提供剩余天赋点、剩余技能点、五维、移动速度、效果范围、两种冷却恢复、经验倍率、总物品掉落率、金币倍率及药剂掉落率；点数走存档权威链，运行期属性在游戏主线程进入真实消费或最终结算路径验证，不以模块自己的写入回读冒充生效。
@@ -51,17 +51,25 @@ catalog.json
 dotnet build GameValueEditor.Modules.slnx -c Release
 ./scripts/validate-modules.ps1 -SkipCatalog
 ./scripts/publish-fzzml.ps1 -Version 2.0.1
-./scripts/publish-last-epoch.ps1 -Version 0.4.1
+./scripts/publish-last-epoch.ps1 -Version 0.4.2 -SkipCatalog
 ./scripts/publish-worldapart.ps1 -Version 1.2.0
 ```
 
-发布脚本从各游戏的 `module.json` 生成包内清单，将自动维护的贡献者信息注入包中，生成 ZIP，并把同一份清单与真实 SHA-256 同步到 `catalog.json`。`module.json` 是兼容构建、编辑器列表和游戏身份的唯一人工维护来源。
+发布脚本从各游戏的 `module.json` 生成包内清单，将维护者生成的贡献者信息注入包中并生成 ZIP；不带 `-SkipCatalog` 时，才会把同一份清单与真实 SHA-256 同步到 `catalog.json`。`module.json` 是兼容构建、编辑器列表和游戏身份的唯一人工维护来源。
+
+完整本地验证使用：
+
+```powershell
+./scripts/verify-release.ps1 -SkipCatalog
+```
+
+仓库不依赖 GitHub Actions。正式发布先使用 `-SkipCatalog` 生成并验证 ZIP，通过 GitHub API 创建不可变 Release；线上资产校验成功后再更新 `catalog.json` 并执行不带 `-SkipCatalog` 的完整目录验证。
 
 ## 贡献者与审核
 
 - 贡献者按整个游戏专属模块展示，不按“背包物品”“人物属性”等编辑模块拆分，也不显示贡献数量或排名。
-- 合并 PR 后，GitHub Actions 根据该 PR 实际修改过的 `games/{短名}` 自动写入 GitHub 显示名称、主页、首次和最新贡献日期；贡献者不直接编辑 `contributors.generated.json`。
-- PR 会自动校验稳定 ID、精确构建指纹、清单/目录一致性并构建所有模块。模块含可执行代码，因此自动检查通过后仍需维护者做安全边界和最小实机读写复核。
+- 合并 PR 后，由维护者运行 `scripts/update-contributors.ps1`，根据该 PR 实际修改过的 `games/{短名}` 写入 GitHub 显示名称、主页、首次和最新贡献日期；贡献者不直接编辑 `contributors.generated.json`。
+- 维护者必须运行 `scripts/verify-release.ps1` 校验稳定 ID、精确构建指纹、清单/目录一致性并构建所有模块。模块含可执行代码，因此脚本通过后仍需做安全边界和最小实机读写复核。
 
 新增游戏或编辑能力前请阅读 [模块扩展规范](docs/MODULE_EXTENSION_GUIDE.md)、[参与维护](CONTRIBUTING.md) 和现有游戏实现说明。
 

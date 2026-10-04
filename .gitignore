@@ -4,3 +4,5 @@ dist/
 **/obj/
 .vs/
 *.user
+*.log
+imgui.ini

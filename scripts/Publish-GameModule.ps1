@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)] [string]$ProjectFile,
     [Parameter(Mandatory)] [string]$AssemblyFile,
     [Parameter(Mandatory)] [string]$ReleaseSlug,
-    [Parameter(Mandatory)] [string]$Version
+    [Parameter(Mandatory)] [string]$Version,
+    [switch]$SkipCatalog
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,11 +27,26 @@ foreach ($path in @($buildDir, $packageDir)) {
 }
 New-Item -ItemType Directory -Path $buildDir, $packageDir, $distDir -Force | Out-Null
 
+$retainedArchiveNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($sourceGameDirectory in Get-ChildItem -LiteralPath (Join-Path $repoRoot "games") -Directory) {
+    $sourceManifestPath = Join-Path $sourceGameDirectory.FullName "module.json"
+    if (-not (Test-Path -LiteralPath $sourceManifestPath)) { continue }
+    $sourceManifest = Get-Content -LiteralPath $sourceManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $sourceSlug = [System.IO.Path]::GetFileNameWithoutExtension([string]$sourceManifest.assemblyFile) `
+        -replace '^GameValueEditor\.Modules\.', ''
+    $null = $retainedArchiveNames.Add("GameValueEditor.Module.$sourceSlug-v$($sourceManifest.version).zip")
+}
+foreach ($oldArchive in Get-ChildItem -LiteralPath $distDir -File -Filter "GameValueEditor.Module.*.zip") {
+    if (-not $retainedArchiveNames.Contains($oldArchive.Name)) {
+        Remove-Item -LiteralPath $oldArchive.FullName -Force
+    }
+}
+
 $manifestPath = Join-Path $gameRoot "module.json"
 $contributorsPath = Join-Path $gameRoot "contributors.generated.json"
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $contributorsDocument = Get-Content -LiteralPath $contributorsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($manifest.version -ne $Version -or $manifest.hostApiVersion -ne 2) {
+if ($manifest.version -ne $Version -or $manifest.hostApiVersion -notin @(2, 3)) {
     throw "module.json version or Host API does not match the requested package."
 }
 if ($contributorsDocument.moduleId -ne $manifest.id) {
@@ -48,24 +64,27 @@ if (Test-Path -LiteralPath $archivePath) { Remove-Item -LiteralPath $archivePath
 Compress-Archive -Path (Join-Path $packageDir "*") -DestinationPath $archivePath -CompressionLevel Optimal
 
 $hash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
-$catalogPath = Join-Path $repoRoot "catalog.json"
-$catalog = Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$catalog.schemaVersion = 3
-$entry = $catalog.modules | Where-Object id -eq $manifest.id | Select-Object -First 1
-if ($null -eq $entry) {
-    $entry = [pscustomobject]@{}
-    $catalog.modules += $entry
-}
-foreach ($property in @("id", "legacyIds", "version", "displayName", "gameDisplayName", "description", "hostApiVersion", "processNames", "compatibleBuilds", "editors")) {
-    if ($manifest.PSObject.Properties.Name -contains $property) {
-        $entry | Add-Member -NotePropertyName $property -NotePropertyValue $manifest.$property -Force
+if (-not $SkipCatalog) {
+    $catalogPath = Join-Path $repoRoot "catalog.json"
+    $catalog = Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $catalog.schemaVersion = 3
+    $catalog.hostApiVersion = 3
+    $entry = $catalog.modules | Where-Object id -eq $manifest.id | Select-Object -First 1
+    if ($null -eq $entry) {
+        $entry = [pscustomobject]@{}
+        $catalog.modules += $entry
     }
+    foreach ($property in @("id", "legacyIds", "version", "displayName", "gameDisplayName", "description", "hostApiVersion", "processNames", "compatibleBuilds", "editors")) {
+        if ($manifest.PSObject.Properties.Name -contains $property) {
+            $entry | Add-Member -NotePropertyName $property -NotePropertyValue $manifest.$property -Force
+        }
+    }
+    $entry | Add-Member -NotePropertyName contributors -NotePropertyValue @($contributorsDocument.contributors) -Force
+    $entry | Add-Member -NotePropertyName downloadUrl -NotePropertyValue "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/$GameDirectory-v$Version/$archiveName" -Force
+    $entry | Add-Member -NotePropertyName sha256 -NotePropertyValue $hash -Force
+    $catalog | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $catalogPath -Encoding utf8NoBOM
+    Write-Host "Updated: $catalogPath"
 }
-$entry | Add-Member -NotePropertyName contributors -NotePropertyValue @($contributorsDocument.contributors) -Force
-$entry | Add-Member -NotePropertyName downloadUrl -NotePropertyValue "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/$GameDirectory-v$Version/$archiveName" -Force
-$entry | Add-Member -NotePropertyName sha256 -NotePropertyValue $hash -Force
-$catalog | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $catalogPath -Encoding utf8NoBOM
 
 Write-Host "Created: $archivePath"
 Write-Host "SHA256: $hash"
-Write-Host "Updated: $catalogPath"

@@ -1,11 +1,11 @@
 {
   "id": "game.last-epoch",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "displayName": "Last Epoch 离线专属修改模块",
   "gameDisplayName": "最后纪元",
   "description": "仅支持离线模式：人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、完整资源槽位、异界进度与摄像头视野；小版本通过 IL2CPP 语义结构校验后自动兼容。",
   "assemblyFile": "GameValueEditor.Modules.LastEpoch.dll",
-  "hostApiVersion": 2,
+  "hostApiVersion": 3,
   "processNames": [
     "Last Epoch"
   ],

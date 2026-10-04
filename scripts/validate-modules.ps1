@@ -18,7 +18,7 @@ foreach ($directory in Get-ChildItem -LiteralPath $gamesRoot -Directory) {
         if (-not $manifest.PSObject.Properties.Name.Contains($name)) { throw "$manifestPath is missing $name." }
     }
     if ($manifest.id -notmatch '^game\.[a-z0-9.-]+$' -or -not $moduleIds.Add($manifest.id)) { throw "Invalid or duplicate module id: $($manifest.id)" }
-    if ($manifest.version -notmatch '^\d+\.\d+\.\d+$' -or $manifest.hostApiVersion -ne 2) { throw "$($manifest.id) has an invalid version or Host API." }
+    if ($manifest.version -notmatch '^\d+\.\d+\.\d+$' -or $manifest.hostApiVersion -notin @(2, 3)) { throw "$($manifest.id) has an invalid version or Host API." }
     if (@($manifest.processNames).Count -eq 0 -or @($manifest.compatibleBuilds).Count -eq 0 -or @($manifest.editors).Count -eq 0) { throw "$($manifest.id) has an empty required collection." }
     foreach ($build in $manifest.compatibleBuilds) {
         foreach ($hashName in @("executableSha256", "gameAssemblySha256", "metadataSha256")) {
@@ -43,7 +43,7 @@ foreach ($directory in Get-ChildItem -LiteralPath $gamesRoot -Directory) {
 
 if (-not $SkipCatalog) {
     $catalog = Get-Content -LiteralPath (Join-Path $repoRoot "catalog.json") -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ($catalog.schemaVersion -ne 3 -or $catalog.hostApiVersion -ne 2) { throw "catalog.json must use schemaVersion 3 and Host API 2." }
+    if ($catalog.schemaVersion -ne 3 -or $catalog.hostApiVersion -ne 3) { throw "catalog.json must use schemaVersion 3 and Host API 3." }
     foreach ($entry in $catalog.modules) {
         if (-not $manifests.ContainsKey($entry.id)) { throw "Catalog entry $($entry.id) has no source module." }
         $source = $manifests[$entry.id]
