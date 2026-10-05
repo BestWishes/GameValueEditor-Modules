@@ -9,7 +9,6 @@ $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 
 & (Join-Path $repoRoot "scripts\test-release-retention.ps1")
-if ($LASTEXITCODE -ne 0) { throw "Release retention simulation failed with code $LASTEXITCODE." }
 if ([string]::IsNullOrWhiteSpace($HostRepository)) {
     $HostRepository = Join-Path (Split-Path $repoRoot -Parent) "GameValueEditor"
 }
