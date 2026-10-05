@@ -1,26 +1,26 @@
 {
-  "id": "game.example",
+  "id": "__MODULE_ID__",
   "version": "1.0.0",
-  "displayName": "示例游戏专属模块",
-  "gameDisplayName": "示例游戏",
-  "description": "简要说明这个游戏专属模块提供的功能。",
-  "assemblyFile": "GameValueEditor.Modules.Example.dll",
-  "hostApiVersion": 2,
+  "displayName": "__MODULE_DISPLAY_NAME__",
+  "gameDisplayName": "__GAME_DISPLAY_NAME__",
+  "description": "为 __GAME_DISPLAY_NAME__ 提供经过构建验证的专属编辑功能。",
+  "assemblyFile": "GameValueEditor.Modules.__CLASS__.dll",
+  "hostApiVersion": 4,
   "processNames": [
-    "ExampleGame"
+    "__PROCESS_NAME__"
   ],
   "compatibleBuilds": [
     {
-      "executableSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "gameAssemblySha256": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-      "metadataSha256": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+      "executableSha256": "__EXE_SHA256__",
+      "gameAssemblySha256": "__ASSEMBLY_SHA256__",
+      "metadataSha256": "__METADATA_SHA256__"
     }
   ],
   "editors": [
     {
-      "id": "game.example.inventory",
-      "displayName": "背包物品",
-      "kind": "collection",
+      "id": "__MODULE_ID__.main",
+      "displayName": "主要功能",
+      "kind": "master-detail",
       "order": 100,
       "sessionOnly": false
     }

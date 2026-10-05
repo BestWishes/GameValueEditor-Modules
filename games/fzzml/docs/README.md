@@ -2,6 +2,12 @@
 
 稳定游戏 ID：`game.fzzml`，当前模块版本：`2.1.0`。
 
+实机验证代码位于同游戏目录的 `tests/FzzmlLiveTest.cs`，由仓库通用运行器执行：
+
+```powershell
+dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Modules.LiveTests.csproj -- --game=fzzml
+```
+
 ## 背包物品
 
 编辑器 ID：`game.fzzml.inventory`。

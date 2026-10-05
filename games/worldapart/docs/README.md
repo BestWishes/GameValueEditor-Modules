@@ -2,6 +2,12 @@
 
 稳定游戏 ID：`game.worldapart`，当前模块版本：`1.3.0`。
 
+实机验证代码位于同游戏目录的 `tests/WorldApartLiveTest.cs`，由仓库通用运行器执行：
+
+```powershell
+dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Modules.LiveTests.csproj -- --game=worldapart
+```
+
 ## 游戏内编辑模块
 
 - `game.worldapart.inventory`（背包物品）：按物品配置 ID 重新定位当前背包对象，实时读取和修改物品总数。

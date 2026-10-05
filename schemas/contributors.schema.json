@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BestWishes/GameValueEditor-Modules/schemas/contributors.schema.json",
+  "title": "GameValueEditor generated module contributors",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "moduleId", "contributors"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "moduleId": { "type": "string", "pattern": "^game\\.[a-z0-9.-]+$" },
+    "contributors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/contributor" }
+    }
+  },
+  "$defs": {
+    "contributor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["githubId", "githubLogin", "displayName", "profileUrl", "firstContributionDate", "latestContributionDate"],
+      "properties": {
+        "githubId": { "type": "integer", "minimum": 1 },
+        "githubLogin": { "type": "string", "minLength": 1 },
+        "displayName": { "type": "string", "minLength": 1 },
+        "profileUrl": { "type": "string", "pattern": "^https://github\\.com/[^/]+/?$" },
+        "firstContributionDate": { "type": "string", "format": "date" },
+        "latestContributionDate": { "type": "string", "format": "date" }
+      }
+    }
+  }
+}

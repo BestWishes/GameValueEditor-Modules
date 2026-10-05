@@ -1,27 +1,49 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [string]$GameDirectory,
-    [Parameter(Mandatory)] [string]$ProjectFile,
-    [Parameter(Mandatory)] [string]$AssemblyFile,
-    [Parameter(Mandatory)] [string]$ReleaseSlug,
-    [Parameter(Mandatory)] [string]$Version,
+    [Parameter(Mandatory)] [ValidatePattern('^[a-z0-9-]+$')] [string]$Game,
+    [ValidatePattern('^$|^\d+\.\d+\.\d+$')] [string]$Version = "",
+    [string]$OutputDirectory = "",
     [switch]$SkipCatalog
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
-$gameRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "games\$GameDirectory"))
-$buildDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "artifacts\$GameDirectory\build"))
-$packageDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "artifacts\$GameDirectory\package"))
-$distDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "dist"))
+$repoBoundary = $repoRoot.TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar,
+    [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$gamesRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "games")) + [System.IO.Path]::DirectorySeparatorChar
+$gameRoot = [System.IO.Path]::GetFullPath((Join-Path $gamesRoot $Game))
+$buildDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "artifacts\$Game\build"))
+$packageDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "artifacts\$Game\package"))
+$distDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    [System.IO.Path]::GetFullPath((Join-Path $repoRoot "dist"))
+} else {
+    [System.IO.Path]::GetFullPath($OutputDirectory)
+}
+$manifestPath = Join-Path $gameRoot "module.json"
+if (-not ($gameRoot + [System.IO.Path]::DirectorySeparatorChar).StartsWith(
+        $gamesRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+    -not (Test-Path -LiteralPath $manifestPath)) {
+    throw "Unknown game module directory: $Game"
+}
+$manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$projectFiles = @(Get-ChildItem -LiteralPath $gameRoot -File -Filter "GameValueEditor.Modules.*.csproj")
+if ($projectFiles.Count -ne 1) { throw "$Game must contain exactly one root module project." }
+$projectFile = $projectFiles[0].FullName
+$assemblyFile = [string]$manifest.assemblyFile
+$releaseSlug = [System.IO.Path]::GetFileNameWithoutExtension($assemblyFile) -replace '^GameValueEditor\.Modules\.', ''
+if ([string]::IsNullOrWhiteSpace($Version)) { $Version = [string]$manifest.version }
 $archiveName = "GameValueEditor.Module.$ReleaseSlug-v$Version.zip"
 $archivePath = [System.IO.Path]::GetFullPath((Join-Path $distDir $archiveName))
 
 foreach ($path in @($gameRoot, $buildDir, $packageDir, $distDir, $archivePath)) {
-    if (-not $path.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not [string]::Equals($path, $repoRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
+        -not $path.StartsWith($repoBoundary, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to use a path outside the repository: $path"
     }
 }
+
+& (Join-Path $PSScriptRoot "validate-modules.ps1") -SkipCatalog
 foreach ($path in @($buildDir, $packageDir)) {
     if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
 }
@@ -42,9 +64,7 @@ foreach ($oldArchive in Get-ChildItem -LiteralPath $distDir -File -Filter "GameV
     }
 }
 
-$manifestPath = Join-Path $gameRoot "module.json"
 $contributorsPath = Join-Path $gameRoot "contributors.generated.json"
-$manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $contributorsDocument = Get-Content -LiteralPath $contributorsPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($manifest.version -ne $Version -or $manifest.hostApiVersion -notin @(2, 3, 4)) {
     throw "module.json version or Host API does not match the requested package."
@@ -53,10 +73,10 @@ if ($contributorsDocument.moduleId -ne $manifest.id) {
     throw "contributors.generated.json belongs to another module."
 }
 
-dotnet build (Join-Path $gameRoot $ProjectFile) -c Release -p:ModuleVersion=$Version -o $buildDir
+dotnet build $projectFile -c Release -p:ModuleVersion=$Version -o $buildDir
 if ($LASTEXITCODE -ne 0) { throw "$($manifest.id) build failed." }
 
-Copy-Item -LiteralPath (Join-Path $buildDir $AssemblyFile) -Destination $packageDir
+Copy-Item -LiteralPath (Join-Path $buildDir $assemblyFile) -Destination $packageDir
 $packagedManifest = $manifest | ConvertTo-Json -Depth 20 | ConvertFrom-Json
 $packagedManifest | Add-Member -NotePropertyName contributors -NotePropertyValue @($contributorsDocument.contributors) -Force
 $packagedManifest | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath (Join-Path $packageDir "module.json") -Encoding utf8NoBOM
@@ -80,7 +100,7 @@ if (-not $SkipCatalog) {
         }
     }
     $entry | Add-Member -NotePropertyName contributors -NotePropertyValue @($contributorsDocument.contributors) -Force
-    $entry | Add-Member -NotePropertyName downloadUrl -NotePropertyValue "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/$GameDirectory-v$Version/$archiveName" -Force
+    $entry | Add-Member -NotePropertyName downloadUrl -NotePropertyValue "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/$Game-v$Version/$archiveName" -Force
     $entry | Add-Member -NotePropertyName sha256 -NotePropertyValue $hash -Force
     $catalog | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $catalogPath -Encoding utf8NoBOM
     Write-Host "Updated: $catalogPath"
