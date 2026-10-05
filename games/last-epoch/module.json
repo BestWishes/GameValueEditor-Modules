@@ -1,11 +1,11 @@
 {
   "id": "game.last-epoch",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "displayName": "Last Epoch 离线专属修改模块",
   "gameDisplayName": "最后纪元",
   "description": "仅支持离线模式：人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、完整资源槽位、异界进度与摄像头视野；小版本通过 IL2CPP 语义结构校验后自动兼容。",
   "assemblyFile": "GameValueEditor.Modules.LastEpoch.dll",
-  "hostApiVersion": 4,
+  "hostApiVersion": 6,
   "processNames": [
     "Last Epoch"
   ],
@@ -27,10 +27,10 @@
     }
   ],
   "editors": [
-    { "id": "game.last-epoch.character-attributes", "displayName": "人物属性", "kind": "master-detail", "order": 200, "sessionOnly": false },
-    { "id": "game.last-epoch.equipment", "displayName": "装备编辑", "kind": "master-detail", "order": 300, "sessionOnly": false },
-    { "id": "game.last-epoch.materials", "displayName": "资源", "kind": "master-detail", "order": 400, "sessionOnly": false },
-    { "id": "game.last-epoch.monolith", "displayName": "异界进度", "kind": "master-detail", "order": 500, "sessionOnly": false },
-    { "id": "game.last-epoch.world", "displayName": "世界功能", "kind": "master-detail", "order": 600, "sessionOnly": true }
+    { "id": "game.last-epoch.character-attributes", "displayName": "人物属性", "order": 200, "sessionOnly": false },
+    { "id": "game.last-epoch.equipment", "displayName": "装备编辑", "order": 300, "sessionOnly": false },
+    { "id": "game.last-epoch.materials", "displayName": "资源", "order": 400, "sessionOnly": false },
+    { "id": "game.last-epoch.monolith", "displayName": "异界进度", "order": 500, "sessionOnly": false },
+    { "id": "game.last-epoch.world", "displayName": "世界功能", "order": 600, "sessionOnly": true }
   ]
 }

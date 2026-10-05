@@ -18,7 +18,7 @@ games/{短名}/
 
 新增游戏不修改主程序、中央解决方案或中央发布脚本。建议使用 `scripts/new-game-module.ps1` 创建安全失败的初始目录。
 
-## Host API 5
+## Host API 6
 
 公共契约位于 `sdk/GameValueEditor.ModuleSdk`。模块 ZIP 只包含模块 DLL 和 `module.json`，不能携带第二份 SDK 或宿主程序集。
 
@@ -26,12 +26,15 @@ games/{短名}/
 - `IInventoryGameAdapter`：标准集合/背包能力。
 - `ICharacterAttributesGameAdapter`：标准人物属性能力。
 - `IEntityEditorsGameAdapter`：装备、资源、进度等实体数字字段能力。
-- `IGameEditorPageProvider`：API 4 必需，显式把每个编辑器绑定到 `Inventory`、`CharacterAttributes` 或 `Entity` 页面角色。
+- `IGameEditorPageFactoryProvider`：API 6 必需，按稳定编辑器 ID 创建模块自己的 `IGameEditorPage`。
+- `IGameEditorHostServices`：宿主提供的通用值输入、错误提示、状态和保存语义字段流程。
 - `IGameCompatibilityDiagnosticsProvider`：API 5 必需，返回游戏专属的只读兼容检查结果。
 - `IGameEditorFieldPolicyProvider`：可选，为混合页面声明单字段生命周期和锁定能力。
 - `IGameVersionMetadataProvider`：可选，只提供游戏自报版本，不能代替构建验证。
 
-模块决定页面清单、稳定 ID、名称、顺序、说明、空状态和操作能力；宿主统一管理主题、布局、弹框、忙碌状态、标准控件和兼容性报告。不要把任意 WPF 页面放入模块。两个以上游戏出现相同新交互形态后，再讨论增加宿主标准页面角色。
+模块决定页面清单、稳定 ID、名称、顺序、说明、完整 WPF 视觉树、页面 ViewModel、筛选和操作流程。可以使用模块内 XAML、`UserControl` 或纯代码页面，也可以选择编译进本模块程序集的共享源码控件；这些都不构成宿主模板。宿主只管理导航容器、主题、生命周期、通用弹框、保存字段和兼容性报告，不读取页面内部控件或按 ID/类型猜布局。
+
+页面应在首次 `Loaded` 时读取数据，在 `Dispose()` 中解绑事件和释放状态，并在每次异步返回后检查 `GameEditorPageContext.Lifetime`。API 6 WPF 模块从影子副本加载；WPF 内部类型缓存使加载上下文保留到进程退出，但安装源包必须始终可删除，旧影子副本由下次启动清理。
 
 兼容性诊断只能读取进程、构建和入口状态，不能写内存、调用游戏刷新/保存，也不能返回本机路径、用户名、PID、内存地址或存档内容。每个结果应给出稳定检查名、`Information`/`Passed`/`Warning`/`Failed` 状态和可直接给维护者阅读的结论；宿主会再次脱敏并隔离提供器异常。
 
@@ -49,7 +52,7 @@ games/{短名}/
 - 贡献者身份和日期有效。
 - 公开目录的所有重复元数据、贡献者、URL 和源码清单完全一致。
 
-宿主加载 DLL 时还会核对程序集与清单的模块显示名，以及编辑器 ID、名称、类型、顺序和 `SessionOnly`；API 4 页面注册必须与编辑器集合一一对应，API 5 模块必须提供只读兼容性诊断。
+宿主加载 DLL 时还会核对程序集与清单的模块显示名，以及编辑器 ID、名称、顺序和 `SessionOnly`。Host API 6 的 `editors` 不含 `kind`，程序集中的兼容描述统一使用 `GameEditorKind.Custom`；页面工厂必须能为每个编辑器创建非空页面。API 5 起仍必须提供只读兼容性诊断。
 
 ## 构建与支持边界
 
@@ -89,7 +92,7 @@ Unity/IL2CPP 主线程挂接必须保存并恢复原始字节和页面保护，�
 - 构建模块目录中的实机测试代码，但不自动连接或写入游戏。
 - 核对模块仓库与当前宿主 SDK 源码一致。
 - 使用当前宿主实际加载每个 ZIP，验证 ABI、清单、页面注册和贡献者。
-- 对 Host API 5 模块验证兼容性诊断契约；报告必须保持只读且不包含本机敏感运行期信息。
+- 对 Host API 6 模块验证页面来自模块程序集、安装源包无文件锁，并验证兼容性诊断保持只读且不包含本机敏感运行期信息。
 
 需要实机验证时显式指定游戏，例如：
 
@@ -101,7 +104,7 @@ dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Mod
 
 ## 发布
 
-任何模块 DLL 或包内清单字节变化都必须提升模块版本；已经发布的资产不得覆盖。
+任何模块 DLL 或包内清单字节变化都必须提升模块版本；已经发布的资产不得覆盖。每个游戏模块独立从自己的最新正式标签加 `0.0.1`，`0.4.9 -> 0.5.0`、`0.9.9 -> 1.0.0`；模块版本与主程序版本、其他模块版本无关。Host API 和 Schema 是整数协议号，不使用此进位规则。
 
 ```powershell
 ./scripts/Publish-GameModule.ps1 -Game example -SkipCatalog
@@ -113,6 +116,6 @@ dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Mod
 2. 完成 Schema、全模块构建和当前宿主真实包加载验证。
 3. 生成 ZIP，检查其恰好包含 DLL 和 `module.json`，记录 SHA-256。
 4. 提交源码，创建不可变标签和 Release，上传并复核远端资产。
-5. 最后更新 `catalog.json`，执行不带 `-SkipCatalog` 的完整验证并单独提交。
+5. Release 资产远端复核通过后，使用 `-CatalogOnly` 从已验证 ZIP 更新 `catalog.json`，再执行 `./scripts/verify-release.ps1 -VerifyReleasedVersions` 并单独提交目录；不得重新打包后换一个哈希。该复验开关只允许已有同名正式标签，不放宽新版本的精确下一版校验。
 
 仓库不依赖 GitHub Actions。通过本地脚本不等于自动接受模块；维护者仍需人工审核离线单机边界、真实对象、线程、保存和实机证据。

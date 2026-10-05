@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
@@ -14,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\sdk\GameValueEditor.ModuleSdk\GameValueEditor.ModuleSdk.csproj" Private="false" />
+    <Compile Include="..\..\shared\ModuleEditorPages.cs" Link="src\Shared\ModuleEditorPages.cs" />
     <None Include="module.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

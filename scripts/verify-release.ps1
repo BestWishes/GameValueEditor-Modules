@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$SkipCatalog,
+    [switch]$VerifyReleasedVersions,
     [string]$HostRepository = ""
 )
 
@@ -45,7 +46,8 @@ foreach ($directory in Get-ChildItem -LiteralPath (Join-Path $repoRoot "games") 
     if ($LASTEXITCODE -ne 0) { throw "$($manifest.id) release build failed with code $LASTEXITCODE." }
 
     & (Join-Path $repoRoot "scripts\Publish-GameModule.ps1") -Game $directory.Name `
-        -OutputDirectory $integrationDirectory -SkipCatalog
+        -OutputDirectory $integrationDirectory -SkipCatalog `
+        -VerifyReleasedVersion:$VerifyReleasedVersions
     $releaseSlug = [System.IO.Path]::GetFileNameWithoutExtension([string]$manifest.assemblyFile) `
         -replace '^GameValueEditor\.Modules\.', ''
     $archivePath = Join-Path $integrationDirectory "GameValueEditor.Module.$releaseSlug-v$($manifest.version).zip"

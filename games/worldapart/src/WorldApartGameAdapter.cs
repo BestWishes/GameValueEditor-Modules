@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using GameValueEditor.ModuleSdk;
+using GameValueEditor.Modules.Ui;
 
 namespace GameValueEditor.Modules.WorldApart;
 
@@ -14,7 +15,8 @@ public sealed partial class WorldApartGameAdapter :
     IInventoryGameAdapter,
     ICharacterAttributesGameAdapter,
     IGameVersionMetadataProvider,
-    IGameEditorPageProvider
+    IGameEditorPageFactoryProvider,
+    IGameCompatibilityDiagnosticsProvider
 {
     private const string InventoryEditorId = "game.worldapart.inventory";
     private const string CharacterEditorId = "game.worldapart.character-attributes";
@@ -99,19 +101,37 @@ public sealed partial class WorldApartGameAdapter :
     public string Description => "提供背包物品与人物属性两项专属编辑功能，并调用游戏自己的保存流程。";
     public IReadOnlyList<GameEditorDescriptor> Editors { get; } =
     [
-        new(InventoryEditorId, "背包物品", GameEditorKind.Collection, 100,
+        new(InventoryEditorId, "背包物品", GameEditorKind.Custom, 100,
             "按稳定物品 ID 实时读取和修改背包物品总数，并调用游戏自身保存流程。"),
-        new(CharacterEditorId, "人物属性", GameEditorKind.MasterDetail, 200,
+        new(CharacterEditorId, "人物属性", GameEditorKind.Custom, 200,
             "修改当前玩家的资源、基础属性、探索属性、五行灵根和战斗属性，并调用游戏自身保存流程。")
     ];
-    public IReadOnlyList<GameEditorPageRegistration> EditorPages { get; } =
-    [
-        new(InventoryEditorId, GameEditorPageRole.Inventory),
-        new(CharacterEditorId, GameEditorPageRole.CharacterAttributes)
-    ];
+    public IGameEditorPage CreateEditorPage(string editorId, GameEditorPageContext context) => editorId switch
+    {
+        InventoryEditorId => new InventoryEditorPage(this, context,
+            "按稳定物品 ID 实时读取和修改背包物品总数，并调用游戏自身保存流程。"),
+        CharacterEditorId => new CharacterEditorPage(this, context, CharacterEditorId,
+            "修改当前玩家的资源、基础属性、探索属性、五行灵根和战斗属性，并调用游戏自身保存流程。"),
+        _ => throw new InvalidOperationException($"WorldApart 模块没有页面：{editorId}。")
+    };
 
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint) =>
         TryResolveLayout(process, fingerprint, out _);
+
+    public IReadOnlyList<GameCompatibilityDiagnostic> GetCompatibilityDiagnostics(
+        GameProcessContext process,
+        GameBuildIdentity fingerprint)
+    {
+        var supported = Supports(process, fingerprint);
+        return
+        [
+            new("构建与结构签名",
+                supported ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
+                supported ? "当前构建通过精确指纹或完整语义结构校验。" : "当前构建未通过模块的构建与结构校验。"),
+            new("模块自有页面", GameCompatibilityDiagnosticStatus.Passed,
+                $"模块将创建 {Editors.Count} 个独立 WPF 页面。")
+        ];
+    }
 
     public GameDeclaredVersionInfo ReadGameVersionMetadata(GameProcessContext process)
     {

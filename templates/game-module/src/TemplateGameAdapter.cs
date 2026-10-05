@@ -1,11 +1,12 @@
 using GameValueEditor.ModuleSdk;
+using GameValueEditor.Modules.Ui;
 
 namespace GameValueEditor.Modules.__CLASS__;
 
 public sealed class __CLASS__GameAdapter :
     IGameAdapter,
     IEntityEditorsGameAdapter,
-    IGameEditorPageProvider,
+    IGameEditorPageFactoryProvider,
     IGameCompatibilityDiagnosticsProvider
 {
     private const string MainEditorId = "__MODULE_ID__.main";
@@ -15,13 +16,13 @@ public sealed class __CLASS__GameAdapter :
     public string Description => "为 __GAME_DISPLAY_NAME__ 提供经过构建验证的专属编辑功能。";
     public IReadOnlyList<GameEditorDescriptor> Editors { get; } =
     [
-        new(MainEditorId, "主要功能", GameEditorKind.MasterDetail, 100,
+        new(MainEditorId, "主要功能", GameEditorKind.Custom, 100,
             "完成真实数据链路后替换此说明。")
     ];
-    public IReadOnlyList<GameEditorPageRegistration> EditorPages { get; } =
-    [
-        new(MainEditorId, GameEditorPageRole.Entity, "模块尚未实现读取逻辑。")
-    ];
+    public IGameEditorPage CreateEditorPage(string editorId, GameEditorPageContext context) =>
+        editorId == MainEditorId
+            ? new EntityEditorPage(this, context, MainEditorId, "完成真实数据链路后替换此说明。")
+            : throw new InvalidOperationException($"模块没有页面：{editorId}。");
 
     // 脚手架必须默认安全失败。实现并验证当前构建后才能返回 true。
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint) => false;

@@ -3,6 +3,8 @@ param([switch]$SkipCatalog)
 
 $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+. (Join-Path $PSScriptRoot 'versioning.ps1')
+Assert-ReleaseVersionContract
 $gamesRoot = Join-Path $repoRoot "games"
 $schemasRoot = Join-Path $repoRoot "schemas"
 $moduleIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
@@ -36,6 +38,19 @@ foreach ($directory in Get-ChildItem -LiteralPath $gamesRoot -Directory | Sort-O
     Assert-JsonSchema -JsonPath $contributorsPath -SchemaPath (Join-Path $schemasRoot "contributors.schema.json")
 
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $gameName = $directory.Name
+    $null = ConvertTo-ReleaseVersion ([string]$manifest.version)
+    Assert-NextReleaseVersion -RepositoryRoot $repoRoot -Version ([string]$manifest.version) `
+        -TagPattern "$gameName-v*" -TagPrefix "$gameName-v" -AllowExistingTag
+    foreach ($editor in @($manifest.editors)) {
+        $hasKind = $editor.PSObject.Properties.Name -contains 'kind'
+        if ([int]$manifest.hostApiVersion -ge 6 -and $hasKind) {
+            throw "$($manifest.id) Host API 6 editor metadata must not contain kind."
+        }
+        if ([int]$manifest.hostApiVersion -le 5 -and -not $hasKind) {
+            throw "$($manifest.id) legacy editor metadata must contain kind."
+        }
+    }
     if (-not $moduleIds.Add($manifest.id)) { throw "Duplicate module id: $($manifest.id)" }
     $projectFiles = @(Get-ChildItem -LiteralPath $directory.FullName -File -Filter "GameValueEditor.Modules.*.csproj")
     if ($projectFiles.Count -ne 1) {

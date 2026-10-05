@@ -6,8 +6,8 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "hostApiVersion", "modules"],
   "properties": {
-    "schemaVersion": { "const": 3 },
-    "hostApiVersion": { "const": 4 },
+    "schemaVersion": { "const": 4 },
+    "hostApiVersion": { "const": 6 },
     "modules": {
       "type": "array",
       "items": { "$ref": "#/$defs/module" }
@@ -18,7 +18,7 @@
     "editor": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "displayName", "kind", "order", "sessionOnly"],
+      "required": ["id", "displayName", "order", "sessionOnly"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "displayName": { "type": "string", "minLength": 1 },
@@ -61,11 +61,11 @@
           "uniqueItems": true,
           "items": { "type": "string", "pattern": "^game\\.[a-z0-9.-]+$" }
         },
-        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.[0-9]\\.[0-9]$" },
         "displayName": { "type": "string", "minLength": 1 },
         "gameDisplayName": { "type": "string", "minLength": 1 },
         "description": { "type": "string", "minLength": 1 },
-        "hostApiVersion": { "type": "integer", "minimum": 2, "maximum": 5 },
+        "hostApiVersion": { "type": "integer", "minimum": 2, "maximum": 6 },
         "processNames": {
           "type": "array",
           "minItems": 1,

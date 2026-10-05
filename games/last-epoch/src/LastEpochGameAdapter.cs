@@ -1,5 +1,6 @@
 using System.Globalization;
 using GameValueEditor.ModuleSdk;
+using GameValueEditor.Modules.Ui;
 
 namespace GameValueEditor.Modules.LastEpoch;
 
@@ -62,7 +63,8 @@ public sealed class LastEpochGameAdapter :
     ICharacterAttributesGameAdapter,
     IEntityEditorsGameAdapter,
     IGameVersionMetadataProvider,
-    IGameEditorPageProvider,
+    IGameEditorPageFactoryProvider,
+    IGameCompatibilityDiagnosticsProvider,
     IGameEditorFieldPolicyProvider
 {
     internal const string CharacterEditorId = "game.last-epoch.character-attributes";
@@ -76,21 +78,26 @@ public sealed class LastEpochGameAdapter :
     public string Description => "人物属性、装备潜能、完整资源槽位、异界进度与世界功能。";
     public IReadOnlyList<GameEditorDescriptor> Editors { get; } =
     [
-        new(CharacterEditorId, "人物属性", GameEditorKind.MasterDetail, 200, "剩余天赋点、剩余技能点、基础属性与实用倍率。"),
-        new(EquipmentEditorId, "装备编辑", GameEditorKind.MasterDetail, 300, "只修改熔炉主槽当前装备的潜能。"),
-        new(MaterialsEditorId, "资源", GameEditorKind.MasterDetail, 400, "全部词缀碎片、符文、雕文和副本钥匙；未拥有的资源显示为 0。"),
-        new(MonolithEditorId, "异界进度", GameEditorKind.MasterDetail, 500, "最高腐化与已有时间线进度。"),
-        new(WorldEditorId, "世界功能", GameEditorKind.MasterDetail, 600, "调整当前摄像头视野大小。", true)
+        new(CharacterEditorId, "人物属性", GameEditorKind.Custom, 200, "剩余天赋点、剩余技能点、基础属性与实用倍率。"),
+        new(EquipmentEditorId, "装备编辑", GameEditorKind.Custom, 300, "只修改熔炉主槽当前装备的潜能。"),
+        new(MaterialsEditorId, "资源", GameEditorKind.Custom, 400, "全部词缀碎片、符文、雕文和副本钥匙；未拥有的资源显示为 0。"),
+        new(MonolithEditorId, "异界进度", GameEditorKind.Custom, 500, "最高腐化与已有时间线进度。"),
+        new(WorldEditorId, "世界功能", GameEditorKind.Custom, 600, "调整当前摄像头视野大小。", true)
     ];
-    public IReadOnlyList<GameEditorPageRegistration> EditorPages { get; } =
-    [
-        new(CharacterEditorId, GameEditorPageRole.CharacterAttributes),
-        new(EquipmentEditorId, GameEditorPageRole.Entity),
-        new(MaterialsEditorId, GameEditorPageRole.Entity),
-        new(MonolithEditorId, GameEditorPageRole.Entity,
-            "当前角色尚无异界时间线记录；进入异界后刷新即可显示。"),
-        new(WorldEditorId, GameEditorPageRole.Entity)
-    ];
+    public IGameEditorPage CreateEditorPage(string editorId, GameEditorPageContext context) => editorId switch
+    {
+        CharacterEditorId => new CharacterEditorPage(this, context, CharacterEditorId,
+            "剩余天赋点、剩余技能点、基础属性与实用倍率。"),
+        EquipmentEditorId => new EntityEditorPage(this, context, EquipmentEditorId,
+            "只修改熔炉主槽当前装备的潜能。"),
+        MaterialsEditorId => new EntityEditorPage(this, context, MaterialsEditorId,
+            "全部词缀碎片、符文、雕文和副本钥匙；未拥有的资源显示为 0。"),
+        MonolithEditorId => new EntityEditorPage(this, context, MonolithEditorId,
+            "最高腐化与已有时间线进度。当前角色尚无记录时，进入异界后刷新即可显示。"),
+        WorldEditorId => new EntityEditorPage(this, context, WorldEditorId,
+            "调整当前摄像头视野大小；本页修改仅当前游戏运行有效。"),
+        _ => throw new InvalidOperationException($"Last Epoch 模块没有页面：{editorId}。")
+    };
 
     public GameEditorFieldPolicy? GetFieldPolicy(string editorId, string entityId, string fieldId)
     {
@@ -117,6 +124,24 @@ public sealed class LastEpochGameAdapter :
             // required IL2CPP symbols. Unknown or structurally incompatible builds fail closed.
             return false;
         }
+    }
+
+    public IReadOnlyList<GameCompatibilityDiagnostic> GetCompatibilityDiagnostics(
+        GameProcessContext process,
+        GameBuildIdentity fingerprint)
+    {
+        var offline = LastEpochRuntime.IsOfflineProcess(process.ProcessId);
+        var supported = offline && Supports(process, fingerprint);
+        return
+        [
+            new("离线进程", offline ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
+                offline ? "当前进程处于离线单机模式。" : "当前进程不是模块允许的离线模式。"),
+            new("IL2CPP 语义结构",
+                supported ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
+                supported ? "当前构建的必需类型、字段和方法结构校验通过。" : "当前构建未通过完整语义结构校验。"),
+            new("模块自有页面", GameCompatibilityDiagnosticStatus.Passed,
+                $"模块将创建 {Editors.Count} 个独立 WPF 页面。")
+        ];
     }
 
     public bool SupportsCharacterAttributes(GameProcessContext process)

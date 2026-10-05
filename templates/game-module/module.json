@@ -5,7 +5,7 @@
   "gameDisplayName": "__GAME_DISPLAY_NAME__",
   "description": "为 __GAME_DISPLAY_NAME__ 提供经过构建验证的专属编辑功能。",
   "assemblyFile": "GameValueEditor.Modules.__CLASS__.dll",
-  "hostApiVersion": 5,
+  "hostApiVersion": 6,
   "processNames": [
     "__PROCESS_NAME__"
   ],
@@ -20,7 +20,6 @@
     {
       "id": "__MODULE_ID__.main",
       "displayName": "主要功能",
-      "kind": "master-detail",
       "order": 100,
       "sessionOnly": false
     }

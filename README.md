@@ -1,6 +1,6 @@
 # 肝肾大圣游戏专属模块中心
 
-本仓库是 [肝肾大圣-单机游戏数值编辑器](https://github.com/BestWishes/GameValueEditor) 的独立游戏模块中心。主程序只负责宿主、统一界面、下载校验和通用扫描；本仓库按游戏保存专属模块源码、构建清单、文档和发行包。
+本仓库是 [肝肾大圣-单机游戏数值编辑器](https://github.com/BestWishes/GameValueEditor) 的独立游戏模块中心。主程序只负责页面容器、主题、公共服务、下载校验和通用扫描；每个游戏模块自己实现完整专属页面、业务逻辑、构建清单、文档和发行包。
 
 ## 两层结构
 
@@ -27,9 +27,9 @@ catalog.json
 
 ## 当前模块
 
-- [`game.fzzml` v2.1.0](games/fzzml/docs/README.md)
-- [`game.worldapart` v1.3.0](games/worldapart/docs/README.md)
-- [`game.last-epoch` v0.5.0](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
+- [`game.fzzml` v2.1.1](games/fzzml/docs/README.md)
+- [`game.worldapart` v1.3.1](games/worldapart/docs/README.md)
+- [`game.last-epoch` v0.5.1](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
 
 具体功能、线程、保存链路和实机证据只维护在对应游戏目录，不复制到主程序架构文档。
 
@@ -51,9 +51,9 @@ catalog.json
 dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Modules.LiveTests.csproj -- --game=fzzml
 ```
 
-新增游戏使用 `scripts/new-game-module.ps1`。脚手架要求真实三文件 SHA-256，生成 Host API 5 模块和只读兼容性诊断骨架；适配器默认拒绝所有构建，不会把占位实现误当成可用模块。
+新增游戏使用 `scripts/new-game-module.ps1`。脚手架要求真实三文件 SHA-256，生成 Host API 6 模块自有 WPF 页面和只读兼容性诊断骨架；适配器默认拒绝所有构建，不会把占位实现误当成可用模块。
 
-仓库不依赖 GitHub Actions。正式发布先使用 `-SkipCatalog` 生成并验证 ZIP，通过 GitHub API 创建不可变 Release；线上资产校验成功后再更新 `catalog.json` 并执行不带 `-SkipCatalog` 的完整目录验证。
+仓库不依赖 GitHub Actions。正式发布先使用 `-SkipCatalog` 生成并验证 ZIP，通过 GitHub API 创建不可变 Release；线上资产校验成功后再更新 `catalog.json`，并用 `./scripts/verify-release.ps1 -VerifyReleasedVersions` 对带目录的已发布版本做完整复验。该开关只允许当前版本已有同名正式标签，不改变新版本发布时的“必须恰好加 `0.0.1`”约束。
 
 ## 贡献者与审核
 
