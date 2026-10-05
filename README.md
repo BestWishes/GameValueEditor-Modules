@@ -51,7 +51,7 @@ catalog.json
 dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Modules.LiveTests.csproj -- --game=fzzml
 ```
 
-新增游戏使用 `scripts/new-game-module.ps1`。脚手架要求真实三文件 SHA-256，生成的适配器默认拒绝所有构建，不会把占位实现误当成可用模块。
+新增游戏使用 `scripts/new-game-module.ps1`。脚手架要求真实三文件 SHA-256，生成 Host API 5 模块和只读兼容性诊断骨架；适配器默认拒绝所有构建，不会把占位实现误当成可用模块。
 
 仓库不依赖 GitHub Actions。正式发布先使用 `-SkipCatalog` 生成并验证 ZIP，通过 GitHub API 创建不可变 Release；线上资产校验成功后再更新 `catalog.json` 并执行不带 `-SkipCatalog` 的完整目录验证。
 

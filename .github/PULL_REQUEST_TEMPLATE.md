@@ -20,6 +20,7 @@
 - [ ] 未知构建安全拒绝，没有通配构建或猜测偏移。
 - [ ] 每次操作重新定位对象，不保存跨会话指针。
 - [ ] `module.json`、项目版本、页面注册和字段策略一致。
+- [ ] Host API 5 兼容性诊断只读，且不返回本机路径、用户名、PID、内存地址或存档内容。
 - [ ] `./scripts/validate-modules.ps1 -SkipCatalog` 通过。
 - [ ] `./scripts/verify-release.ps1 -SkipCatalog` 使用当前宿主加载了真实模块包。
 - [ ] 已记录最小影响的实机验证；任何测试写入均已恢复原值。

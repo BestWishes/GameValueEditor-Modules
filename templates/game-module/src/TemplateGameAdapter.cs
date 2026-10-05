@@ -5,7 +5,8 @@ namespace GameValueEditor.Modules.__CLASS__;
 public sealed class __CLASS__GameAdapter :
     IGameAdapter,
     IEntityEditorsGameAdapter,
-    IGameEditorPageProvider
+    IGameEditorPageProvider,
+    IGameCompatibilityDiagnosticsProvider
 {
     private const string MainEditorId = "__MODULE_ID__.main";
 
@@ -41,4 +42,12 @@ public sealed class __CLASS__GameAdapter :
         string entityId,
         string fieldKey,
         long targetValue) => throw new InvalidOperationException("模块尚未实现实体字段写入。");
+
+    public IReadOnlyList<GameCompatibilityDiagnostic> GetCompatibilityDiagnostics(
+        GameProcessContext process,
+        GameBuildIdentity fingerprint) =>
+    [
+        new("构建支持", GameCompatibilityDiagnosticStatus.Warning,
+            "脚手架尚未实现只读结构检查；完成真实数据链路后替换此项。")
+    ];
 }

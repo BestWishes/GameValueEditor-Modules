@@ -66,7 +66,7 @@ foreach ($oldArchive in Get-ChildItem -LiteralPath $distDir -File -Filter "GameV
 
 $contributorsPath = Join-Path $gameRoot "contributors.generated.json"
 $contributorsDocument = Get-Content -LiteralPath $contributorsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($manifest.version -ne $Version -or $manifest.hostApiVersion -notin @(2, 3, 4)) {
+if ($manifest.version -ne $Version -or $manifest.hostApiVersion -notin @(2, 3, 4, 5)) {
     throw "module.json version or Host API does not match the requested package."
 }
 if ($contributorsDocument.moduleId -ne $manifest.id) {

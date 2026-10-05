@@ -65,7 +65,7 @@
         "displayName": { "type": "string", "minLength": 1 },
         "gameDisplayName": { "type": "string", "minLength": 1 },
         "description": { "type": "string", "minLength": 1 },
-        "hostApiVersion": { "type": "integer", "minimum": 2, "maximum": 4 },
+        "hostApiVersion": { "type": "integer", "minimum": 2, "maximum": 5 },
         "processNames": {
           "type": "array",
           "minItems": 1,

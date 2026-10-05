@@ -18,7 +18,7 @@ games/{短名}/
 
 新增游戏不修改主程序、中央解决方案或中央发布脚本。建议使用 `scripts/new-game-module.ps1` 创建安全失败的初始目录。
 
-## Host API 4
+## Host API 5
 
 公共契约位于 `sdk/GameValueEditor.ModuleSdk`。模块 ZIP 只包含模块 DLL 和 `module.json`，不能携带第二份 SDK 或宿主程序集。
 
@@ -27,10 +27,13 @@ games/{短名}/
 - `ICharacterAttributesGameAdapter`：标准人物属性能力。
 - `IEntityEditorsGameAdapter`：装备、资源、进度等实体数字字段能力。
 - `IGameEditorPageProvider`：API 4 必需，显式把每个编辑器绑定到 `Inventory`、`CharacterAttributes` 或 `Entity` 页面角色。
+- `IGameCompatibilityDiagnosticsProvider`：API 5 必需，返回游戏专属的只读兼容检查结果。
 - `IGameEditorFieldPolicyProvider`：可选，为混合页面声明单字段生命周期和锁定能力。
 - `IGameVersionMetadataProvider`：可选，只提供游戏自报版本，不能代替构建验证。
 
-模块决定页面清单、稳定 ID、名称、顺序、说明、空状态和操作能力；宿主统一管理主题、布局、弹框、忙碌状态和标准控件。不要把任意 WPF 页面放入模块。两个以上游戏出现相同新交互形态后，再讨论增加宿主标准页面角色。
+模块决定页面清单、稳定 ID、名称、顺序、说明、空状态和操作能力；宿主统一管理主题、布局、弹框、忙碌状态、标准控件和兼容性报告。不要把任意 WPF 页面放入模块。两个以上游戏出现相同新交互形态后，再讨论增加宿主标准页面角色。
+
+兼容性诊断只能读取进程、构建和入口状态，不能写内存、调用游戏刷新/保存，也不能返回本机路径、用户名、PID、内存地址或存档内容。每个结果应给出稳定检查名、`Information`/`Passed`/`Warning`/`Failed` 状态和可直接给维护者阅读的结论；宿主会再次脱敏并隔离提供器异常。
 
 ## 清单与 Schema
 
@@ -46,7 +49,7 @@ games/{短名}/
 - 贡献者身份和日期有效。
 - 公开目录的所有重复元数据、贡献者、URL 和源码清单完全一致。
 
-宿主加载 DLL 时还会核对程序集与清单的模块显示名，以及编辑器 ID、名称、类型、顺序和 `SessionOnly`；API 4 页面注册必须与编辑器集合一一对应。
+宿主加载 DLL 时还会核对程序集与清单的模块显示名，以及编辑器 ID、名称、类型、顺序和 `SessionOnly`；API 4 页面注册必须与编辑器集合一一对应，API 5 模块必须提供只读兼容性诊断。
 
 ## 构建与支持边界
 
@@ -86,6 +89,7 @@ Unity/IL2CPP 主线程挂接必须保存并恢复原始字节和页面保护，�
 - 构建模块目录中的实机测试代码，但不自动连接或写入游戏。
 - 核对模块仓库与当前宿主 SDK 源码一致。
 - 使用当前宿主实际加载每个 ZIP，验证 ABI、清单、页面注册和贡献者。
+- 对 Host API 5 模块验证兼容性诊断契约；报告必须保持只读且不包含本机敏感运行期信息。
 
 需要实机验证时显式指定游戏，例如：
 
