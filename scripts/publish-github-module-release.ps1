@@ -83,8 +83,11 @@ if ($assetName -cne $expectedAssetName) {
 }
 $localSize = (Get-Item -LiteralPath $resolvedAsset).Length
 $localHash = (Get-FileHash -LiteralPath $resolvedAsset -Algorithm SHA256).Hash.ToLowerInvariant()
-$headCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
-if ($LASTEXITCODE -ne 0) { throw 'Unable to resolve HEAD.' }
+$tagRef = "refs/tags/$Tag"
+$tagCommit = (& git -C $repoRoot rev-list -n 1 $tagRef).Trim()
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tagCommit)) {
+    throw "Unable to resolve release tag $Tag."
+}
 $packageProbeRoot = Join-Path ([IO.Path]::GetTempPath()) "gve-release-provenance-$([Guid]::NewGuid().ToString('N'))"
 try {
     Expand-Archive -LiteralPath $resolvedAsset -DestinationPath $packageProbeRoot
@@ -92,8 +95,8 @@ try {
     $binaryPath = Join-Path $packageProbeRoot $binaryName
     if (-not (Test-Path -LiteralPath $binaryPath)) { throw "Release package is missing $binaryName." }
     $productVersion = (Get-Item -LiteralPath $binaryPath).VersionInfo.ProductVersion
-    if ($productVersion -notmatch "\+$([regex]::Escape($headCommit))$") {
-        throw "$binaryName ProductVersion is not traceable to HEAD $headCommit`: $productVersion"
+    if ($productVersion -notmatch "\+$([regex]::Escape($tagCommit))$") {
+        throw "$binaryName ProductVersion is not traceable to release tag $Tag ($tagCommit): $productVersion"
     }
     $packagedManifest = Get-Content -LiteralPath (Join-Path $packageProbeRoot 'module.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $packagedMaximumHostVersion = if ($packagedManifest.PSObject.Properties.Name -contains 'maximumHostVersion') {
