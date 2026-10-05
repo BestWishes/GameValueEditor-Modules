@@ -27,9 +27,9 @@ catalog.json
 
 ## 当前模块
 
-- [`game.fzzml` v2.1.1](games/fzzml/docs/README.md)
-- [`game.worldapart` v1.3.1](games/worldapart/docs/README.md)
-- [`game.last-epoch` v0.5.1](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
+- [`game.fzzml` v2.1.2](games/fzzml/docs/README.md)
+- [`game.worldapart` v1.3.2](games/worldapart/docs/README.md)
+- [`game.last-epoch` v0.5.2](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
 
 具体功能、线程、保存链路和实机证据只维护在对应游戏目录，不复制到主程序架构文档。
 
@@ -51,9 +51,11 @@ catalog.json
 dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Modules.LiveTests.csproj -- --game=fzzml
 ```
 
-新增游戏使用 `scripts/new-game-module.ps1`。脚手架要求真实三文件 SHA-256，生成 Host API 6 模块自有 WPF 页面和只读兼容性诊断骨架；适配器默认拒绝所有构建，不会把占位实现误当成可用模块。
+新增游戏使用 `scripts/new-game-module.ps1`。脚手架要求真实三文件 SHA-256，生成模块自有 WPF 页面和只读兼容性诊断骨架；Host API 7 还要求页面使用宿主视觉资源键和间距常量。适配器默认拒绝所有构建，不会把占位实现误当成可用模块。
 
-仓库不依赖 GitHub Actions。正式发布先使用 `-SkipCatalog` 生成并验证 ZIP，通过 GitHub API 创建不可变 Release；线上资产校验成功后再更新 `catalog.json`，并用 `./scripts/verify-release.ps1 -VerifyReleasedVersions` 对带目录的已发布版本做完整复验。该开关只允许当前版本已有同名正式标签，不改变新版本发布时的“必须恰好加 `0.0.1`”约束。
+仓库不依赖 GitHub Actions。正式发布先完成源码检查并提交，再从干净提交使用 `-SkipCatalog` 生成最终 ZIP；包内 DLL 的 `ProductVersion` 提交号、带注释标签和远端分支必须一致。通过 GitHub API 创建不可变 Release并校验线上大小与 SHA-256 后，再用 `-CatalogOnly` 更新 `catalog.json`，并以 `./scripts/verify-release.ps1 -VerifyReleasedVersions` 对带目录的已发布版本做完整复验。目录为每个模块自动保留最多 3 个版本快照，最后才删除该模块第 4 个及更旧的 Release 资产并保留 Git 标签。该开关只允许当前版本已有同名正式标签，不改变新版本发布时的“必须恰好加 `0.0.1`”约束。
+
+主程序版本和每个模块版本独立递增，无需编号对应；兼容关系由每个发布快照的 Host API、最低/最高主程序版本和游戏构建共同确定。主程序与模块回退都是用户显式操作，不提供自动回退。
 
 ## 贡献者与审核
 

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "hostApiVersion": 6,
   "modules": [
     {
@@ -57,7 +57,91 @@
         }
       ],
       "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.1/GameValueEditor.Module.Fzzml-v2.1.1.zip",
-      "sha256": "9BC5A1F0606CDED58B9320F123E47234481EA63F35653EAC77B9DBCE4D3F4BCF"
+      "sha256": "9BC5A1F0606CDED58B9320F123E47234481EA63F35653EAC77B9DBCE4D3F4BCF",
+      "minimumHostVersion": "0.4.3",
+      "sizeBytes": 50204,
+      "releases": [
+        {
+          "version": "2.1.1",
+          "hostApiVersion": 6,
+          "minimumHostVersion": "0.4.3",
+          "compatibleBuilds": [
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "CEC90FD2CCEEBD51637BFAC90C86C6E45D68CC76E6FDB0FAB1430F2A198D7421",
+              "metadataSha256": "EB4D7A29675EC35CDE1106D6AE3C0E22BCA0AEF5C50248C2D42FA139077E446F"
+            },
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "EAE4239F59FD5DB09033C9FE21195A800881267B57833DA2AABB659843F99B27",
+              "metadataSha256": "BCAA6845585DA9920F61F75A04FB70ACB6298D95C94FC545D0C4583C44C88947"
+            },
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "BF156D35DDB79839797517BC95BC07080DAACDCF78D08579B7D0D4C09386D752",
+              "metadataSha256": "AEB09A9D3C8359F54C2DF29F3045C5AE1D9270DC269EC0A8E18C0D359CE4CD29"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.fzzml.inventory",
+              "displayName": "背包物品",
+              "order": 100,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.fzzml.character-attributes",
+              "displayName": "人物属性",
+              "order": 200,
+              "sessionOnly": true
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.1/GameValueEditor.Module.Fzzml-v2.1.1.zip",
+          "sizeBytes": 50204,
+          "sha256": "9BC5A1F0606CDED58B9320F123E47234481EA63F35653EAC77B9DBCE4D3F4BCF"
+        },
+        {
+          "version": "2.1.0",
+          "hostApiVersion": 4,
+          "minimumHostVersion": "0.4.1",
+          "compatibleBuilds": [
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "CEC90FD2CCEEBD51637BFAC90C86C6E45D68CC76E6FDB0FAB1430F2A198D7421",
+              "metadataSha256": "EB4D7A29675EC35CDE1106D6AE3C0E22BCA0AEF5C50248C2D42FA139077E446F"
+            },
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "EAE4239F59FD5DB09033C9FE21195A800881267B57833DA2AABB659843F99B27",
+              "metadataSha256": "BCAA6845585DA9920F61F75A04FB70ACB6298D95C94FC545D0C4583C44C88947"
+            },
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "BF156D35DDB79839797517BC95BC07080DAACDCF78D08579B7D0D4C09386D752",
+              "metadataSha256": "AEB09A9D3C8359F54C2DF29F3045C5AE1D9270DC269EC0A8E18C0D359CE4CD29"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.fzzml.inventory",
+              "displayName": "背包物品",
+              "kind": "collection",
+              "order": 100,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.fzzml.character-attributes",
+              "displayName": "人物属性",
+              "kind": "master-detail",
+              "order": 200,
+              "sessionOnly": true
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.0/GameValueEditor.Module.Fzzml-v2.1.0.zip",
+          "sizeBytes": 36249,
+          "sha256": "F6C193EB2657E8378B894D29C68B9E2E5C6F8DF81AC6DD69FF3C069E72E096F8"
+        }
+      ]
     },
     {
       "id": "game.worldapart",
@@ -106,7 +190,81 @@
         }
       ],
       "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.1/GameValueEditor.Module.WorldApart-v1.3.1.zip",
-      "sha256": "9B68523FBF6300C33495CAC983FA8D2C6D824FF1DFBF3FDD60340B0BA3B51AD4"
+      "sha256": "9B68523FBF6300C33495CAC983FA8D2C6D824FF1DFBF3FDD60340B0BA3B51AD4",
+      "minimumHostVersion": "0.4.3",
+      "sizeBytes": 48363,
+      "releases": [
+        {
+          "version": "1.3.1",
+          "hostApiVersion": 6,
+          "minimumHostVersion": "0.4.3",
+          "compatibleBuilds": [
+            {
+              "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
+              "gameAssemblySha256": "E4BFA837BD5F43BF5FFBE3E28C80B40CD3E20B24CE63941CE2280874DF2FA056",
+              "metadataSha256": "55F65FE395395CAA4C3C8DE6F874107AB92742CA638F1E0F77ECB609A22154FA"
+            },
+            {
+              "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
+              "gameAssemblySha256": "EDE8A956051C0C831F79E0874AFF28297F41D3FA18C18AD2CA2FF16C33D0938D",
+              "metadataSha256": "BBECA25F98CFC56BFE48A5BD6DC90B9AADFEB1A6BB8F0DC03CA8DA2EF26DBDBC"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.worldapart.inventory",
+              "displayName": "背包物品",
+              "order": 100,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.worldapart.character-attributes",
+              "displayName": "人物属性",
+              "order": 200,
+              "sessionOnly": false
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.1/GameValueEditor.Module.WorldApart-v1.3.1.zip",
+          "sizeBytes": 48363,
+          "sha256": "9B68523FBF6300C33495CAC983FA8D2C6D824FF1DFBF3FDD60340B0BA3B51AD4"
+        },
+        {
+          "version": "1.3.0",
+          "hostApiVersion": 4,
+          "minimumHostVersion": "0.4.1",
+          "compatibleBuilds": [
+            {
+              "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
+              "gameAssemblySha256": "E4BFA837BD5F43BF5FFBE3E28C80B40CD3E20B24CE63941CE2280874DF2FA056",
+              "metadataSha256": "55F65FE395395CAA4C3C8DE6F874107AB92742CA638F1E0F77ECB609A22154FA"
+            },
+            {
+              "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
+              "gameAssemblySha256": "EDE8A956051C0C831F79E0874AFF28297F41D3FA18C18AD2CA2FF16C33D0938D",
+              "metadataSha256": "BBECA25F98CFC56BFE48A5BD6DC90B9AADFEB1A6BB8F0DC03CA8DA2EF26DBDBC"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.worldapart.inventory",
+              "displayName": "背包物品",
+              "kind": "collection",
+              "order": 100,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.worldapart.character-attributes",
+              "displayName": "人物属性",
+              "kind": "master-detail",
+              "order": 200,
+              "sessionOnly": false
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.0/GameValueEditor.Module.WorldApart-v1.3.0.zip",
+          "sizeBytes": 34377,
+          "sha256": "61CD621FFD46948F3C225BF5C57B522D68F21788A6791FD50FB2403C90449923"
+        }
+      ]
     },
     {
       "id": "game.last-epoch",
@@ -178,7 +336,130 @@
         }
       ],
       "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.1/GameValueEditor.Module.LastEpoch-v0.5.1.zip",
-      "sha256": "60B6921DEC3D34EA7B4567D4C9A123B42ECA341C664DE0472092E7A8AD47D1C0"
+      "sha256": "60B6921DEC3D34EA7B4567D4C9A123B42ECA341C664DE0472092E7A8AD47D1C0",
+      "minimumHostVersion": "0.4.3",
+      "sizeBytes": 63356,
+      "releases": [
+        {
+          "version": "0.5.1",
+          "hostApiVersion": 6,
+          "minimumHostVersion": "0.4.3",
+          "compatibleBuilds": [
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "1B720BDE6C6010BF02DE2F9724BC4C5E524C192B29E5AA160852B7993ED45449",
+              "metadataSha256": "7FA4AC2A9B2A96BB084ED84EE4D6282FB73FF1AD00936AC1DDF8EA6FBA570B08"
+            },
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "502E32F1F31BC1979AC6C387FAEF1266A62AD29F5B573E6D9B51CB577A72F5F8",
+              "metadataSha256": "F50904BB4F148A4F4EA7239BE6029CD35669E37BE107178492381D67F2E1EE99"
+            },
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "FC83F941396282C0E489ED44FF4375130FB74F3C5D8CDF983696A9EFBDC9019A",
+              "metadataSha256": "A4F8B652DD3CCFCCE53E87B9ABCBA0ECDDF3798CF42C4C5F7C045DF3CACBF17D"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.last-epoch.character-attributes",
+              "displayName": "人物属性",
+              "order": 200,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.equipment",
+              "displayName": "装备编辑",
+              "order": 300,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.materials",
+              "displayName": "资源",
+              "order": 400,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.monolith",
+              "displayName": "异界进度",
+              "order": 500,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.world",
+              "displayName": "世界功能",
+              "order": 600,
+              "sessionOnly": true
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.1/GameValueEditor.Module.LastEpoch-v0.5.1.zip",
+          "sizeBytes": 63356,
+          "sha256": "60B6921DEC3D34EA7B4567D4C9A123B42ECA341C664DE0472092E7A8AD47D1C0"
+        },
+        {
+          "version": "0.5.0",
+          "hostApiVersion": 4,
+          "minimumHostVersion": "0.4.1",
+          "compatibleBuilds": [
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "1B720BDE6C6010BF02DE2F9724BC4C5E524C192B29E5AA160852B7993ED45449",
+              "metadataSha256": "7FA4AC2A9B2A96BB084ED84EE4D6282FB73FF1AD00936AC1DDF8EA6FBA570B08"
+            },
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "502E32F1F31BC1979AC6C387FAEF1266A62AD29F5B573E6D9B51CB577A72F5F8",
+              "metadataSha256": "F50904BB4F148A4F4EA7239BE6029CD35669E37BE107178492381D67F2E1EE99"
+            },
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "FC83F941396282C0E489ED44FF4375130FB74F3C5D8CDF983696A9EFBDC9019A",
+              "metadataSha256": "A4F8B652DD3CCFCCE53E87B9ABCBA0ECDDF3798CF42C4C5F7C045DF3CACBF17D"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.last-epoch.character-attributes",
+              "displayName": "人物属性",
+              "kind": "master-detail",
+              "order": 200,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.equipment",
+              "displayName": "装备编辑",
+              "kind": "master-detail",
+              "order": 300,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.materials",
+              "displayName": "资源",
+              "kind": "master-detail",
+              "order": 400,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.monolith",
+              "displayName": "异界进度",
+              "kind": "master-detail",
+              "order": 500,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.world",
+              "displayName": "世界功能",
+              "kind": "master-detail",
+              "order": 600,
+              "sessionOnly": true
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.0/GameValueEditor.Module.LastEpoch-v0.5.0.zip",
+          "sizeBytes": 49782,
+          "sha256": "4DD5899CC64277740DAD09A90839A3CADC1123FC744884038F961C5013619034"
+        }
+      ]
     }
   ]
 }

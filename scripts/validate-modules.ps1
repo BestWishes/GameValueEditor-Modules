@@ -5,6 +5,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 . (Join-Path $PSScriptRoot 'versioning.ps1')
 Assert-ReleaseVersionContract
+& (Join-Path $PSScriptRoot 'validate-module-visuals.ps1')
 $gamesRoot = Join-Path $repoRoot "games"
 $schemasRoot = Join-Path $repoRoot "schemas"
 $moduleIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
@@ -102,7 +103,7 @@ if (-not $SkipCatalog) {
         if (-not $catalogIds.Add($entry.id)) { throw "Catalog contains duplicate module id: $($entry.id)" }
         if (-not $manifests.ContainsKey($entry.id)) { throw "Catalog entry $($entry.id) has no source module." }
         $source = $manifests[$entry.id]
-        foreach ($property in @("version", "displayName", "gameDisplayName", "description", "hostApiVersion", "processNames", "compatibleBuilds", "editors")) {
+        foreach ($property in @("version", "displayName", "gameDisplayName", "description", "hostApiVersion", "minimumHostVersion", "processNames", "compatibleBuilds", "editors")) {
             if ((ConvertTo-ComparableJson $entry.$property) -ne (ConvertTo-ComparableJson $source.$property)) {
                 throw "Catalog entry $($entry.id) has stale $property metadata."
             }
@@ -122,6 +123,31 @@ if (-not $SkipCatalog) {
         $expectedUrl = "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/$($directoriesByModule[$entry.id])-v$($source.version)/$assetName"
         if ($entry.downloadUrl -ne $expectedUrl) {
             throw "Catalog entry $($entry.id) has an unexpected download URL."
+        }
+        if (@($entry.releases).Count -lt 1 -or @($entry.releases).Count -gt 3) {
+            throw "Catalog entry $($entry.id) must retain one to three releases."
+        }
+        $releaseVersions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $previousVersion = $null
+        foreach ($release in @($entry.releases)) {
+            $releaseVersion = ConvertTo-ReleaseVersion ([string]$release.version)
+            if (-not $releaseVersions.Add($releaseVersion.Text)) {
+                throw "Catalog entry $($entry.id) contains duplicate release $($releaseVersion.Text)."
+            }
+            if ($null -ne $previousVersion -and
+                ($releaseVersion.Major -gt $previousVersion.Major -or
+                 ($releaseVersion.Major -eq $previousVersion.Major -and $releaseVersion.Minor -gt $previousVersion.Minor) -or
+                 ($releaseVersion.Major -eq $previousVersion.Major -and $releaseVersion.Minor -eq $previousVersion.Minor -and
+                  $releaseVersion.Patch -ge $previousVersion.Patch))) {
+                throw "Catalog releases for $($entry.id) are not strictly descending."
+            }
+            $previousVersion = $releaseVersion
+        }
+        $latestRelease = @($entry.releases)[0]
+        foreach ($property in @("version", "hostApiVersion", "minimumHostVersion", "compatibleBuilds", "editors", "downloadUrl", "sizeBytes", "sha256")) {
+            if ((ConvertTo-ComparableJson $latestRelease.$property) -ne (ConvertTo-ComparableJson $entry.$property)) {
+                throw "Catalog entry $($entry.id) latest release has stale $property metadata."
+            }
         }
     }
     if ($catalog.modules.Count -ne $manifests.Count) {

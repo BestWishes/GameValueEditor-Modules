@@ -81,7 +81,7 @@ internal abstract class ModuleEditorPageBase : IGameEditorPage
     {
         Content = text,
         MinWidth = 108,
-        Margin = new Thickness(8, 0, 0, 0)
+        Margin = ModuleVisualResources.InlineControlSpacing
     };
 
     protected static Grid GridWithRows(params GridLength[] heights)
@@ -106,7 +106,7 @@ internal sealed class InventoryEditorPage : ModuleEditorPageBase
     private readonly ICollectionView _itemsView;
     private readonly DataGrid _grid = new() { IsReadOnly = true, SelectionMode = DataGridSelectionMode.Extended };
     private readonly TextBox _nameFilter = new() { ToolTip = "按物品名称查找" };
-    private readonly TextBox _countFilter = new() { ToolTip = "按物品数量精确查找", Margin = new Thickness(8, 0, 0, 0) };
+    private readonly TextBox _countFilter = new() { ToolTip = "按物品数量精确查找", Margin = ModuleVisualResources.InlineControlSpacing };
 
     public InventoryEditorPage(IInventoryGameAdapter adapter, GameEditorPageContext context, string description)
         : base(context)
@@ -118,7 +118,7 @@ internal sealed class InventoryEditorPage : ModuleEditorPageBase
         _countFilter.TextChanged += (_, _) => _itemsView.Refresh();
 
         var root = GridWithRows(GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto);
-        root.Margin = new Thickness(12);
+        root.Margin = ModuleVisualResources.PagePadding;
         root.Children.Add(Description(description));
 
         var filters = GridWithColumns(new GridLength(1, GridUnitType.Star), new GridLength(150), GridLength.Auto);
@@ -134,7 +134,7 @@ internal sealed class InventoryEditorPage : ModuleEditorPageBase
         root.Children.Add(filters);
 
         _grid.ItemsSource = _itemsView;
-        _grid.Margin = new Thickness(0, 10, 0, 10);
+        _grid.Margin = ModuleVisualResources.SectionSpacing;
         _grid.Columns.Add(new DataGridTextColumn { Header = "物品名称", Binding = new Binding(nameof(AdapterInventoryItem.DisplayName)), Width = new DataGridLength(2, DataGridLengthUnitType.Star) });
         _grid.Columns.Add(new DataGridTextColumn { Header = "物品总数", Binding = new Binding(nameof(AdapterInventoryItem.CountDisplay)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
         _grid.MouseDoubleClick += async (_, args) =>
@@ -229,7 +229,7 @@ internal sealed class CharacterEditorPage : ModuleEditorPageBase
     private readonly ObservableCollection<AdapterCharacterItem> _characters = [];
     private readonly ListBox _characterList = new();
     private readonly DataGrid _attributeGrid = new() { IsReadOnly = true, SelectionMode = DataGridSelectionMode.Single };
-    private readonly TextBox _filter = new() { ToolTip = "按人物属性名称查找", Margin = new Thickness(8, 0, 0, 0) };
+    private readonly TextBox _filter = new() { ToolTip = "按人物属性名称查找", Margin = ModuleVisualResources.InlineControlSpacing };
     private ICollectionView? _attributeView;
 
     public CharacterEditorPage(
@@ -243,7 +243,7 @@ internal sealed class CharacterEditorPage : ModuleEditorPageBase
         _filter.TextChanged += (_, _) => _attributeView?.Refresh();
 
         var root = GridWithRows(GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto);
-        root.Margin = new Thickness(12);
+        root.Margin = ModuleVisualResources.PagePadding;
         var header = GridWithColumns(new GridLength(1, GridUnitType.Star), new GridLength(260), GridLength.Auto);
         header.Children.Add(Description(description));
         Grid.SetColumn(_filter, 1);
@@ -255,7 +255,7 @@ internal sealed class CharacterEditorPage : ModuleEditorPageBase
         root.Children.Add(header);
 
         var content = GridWithColumns(new GridLength(245), new GridLength(10), new GridLength(1, GridUnitType.Star));
-        content.Margin = new Thickness(0, 10, 0, 10);
+        content.Margin = ModuleVisualResources.SectionSpacing;
         _characterList.ItemsSource = _characters;
         _characterList.DisplayMemberPath = nameof(AdapterCharacterItem.DisplayName);
         _characterList.SelectionChanged += (_, _) => BindAttributes();
@@ -382,7 +382,7 @@ internal sealed class EntityEditorPage : ModuleEditorPageBase
     private readonly ObservableCollection<AdapterEditorEntity> _entities = [];
     private readonly ListBox _entityList = new();
     private readonly DataGrid _fieldGrid = new() { IsReadOnly = true, SelectionMode = DataGridSelectionMode.Single };
-    private readonly TextBox _filter = new() { ToolTip = "按项目或字段名称查找", Margin = new Thickness(8, 0, 0, 0) };
+    private readonly TextBox _filter = new() { ToolTip = "按项目或字段名称查找", Margin = ModuleVisualResources.InlineControlSpacing };
     private readonly TextBlock _empty = new() { Text = "当前没有可显示的项目。", TextAlignment = TextAlignment.Center, FontSize = 17 };
     private readonly ICollectionView _entityView;
     private ICollectionView? _fieldView;
@@ -400,7 +400,7 @@ internal sealed class EntityEditorPage : ModuleEditorPageBase
         _filter.TextChanged += (_, _) => { _entityView.Refresh(); _fieldView?.Refresh(); };
 
         var root = GridWithRows(GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto);
-        root.Margin = new Thickness(12);
+        root.Margin = ModuleVisualResources.PagePadding;
         var header = GridWithColumns(new GridLength(1, GridUnitType.Star), new GridLength(260), GridLength.Auto);
         header.Children.Add(Description(description));
         Grid.SetColumn(_filter, 1);
@@ -412,7 +412,7 @@ internal sealed class EntityEditorPage : ModuleEditorPageBase
         root.Children.Add(header);
 
         var content = GridWithColumns(new GridLength(280), new GridLength(10), new GridLength(1, GridUnitType.Star));
-        content.Margin = new Thickness(0, 10, 0, 10);
+        content.Margin = ModuleVisualResources.SectionSpacing;
         _entityList.ItemsSource = _entityView;
         _entityList.DisplayMemberPath = nameof(AdapterEditorEntity.DisplayName);
         _entityList.SelectionChanged += (_, _) => BindFields();

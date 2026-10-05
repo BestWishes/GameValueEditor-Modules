@@ -8,7 +8,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>GameValueEditor.Modules.LastEpoch</AssemblyName>
     <RootNamespace>GameValueEditor.Modules.LastEpoch</RootNamespace>
-    <ModuleVersion Condition="'$(ModuleVersion)' == ''">0.5.1</ModuleVersion>
+    <ModuleVersion Condition="'$(ModuleVersion)' == ''">0.5.2</ModuleVersion>
     <Version>$(ModuleVersion)</Version>
   </PropertyGroup>
   <ItemGroup>

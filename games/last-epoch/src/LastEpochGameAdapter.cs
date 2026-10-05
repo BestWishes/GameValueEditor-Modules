@@ -80,7 +80,7 @@ public sealed class LastEpochGameAdapter :
     [
         new(CharacterEditorId, "人物属性", GameEditorKind.Custom, 200, "剩余天赋点、剩余技能点、基础属性与实用倍率。"),
         new(EquipmentEditorId, "装备编辑", GameEditorKind.Custom, 300, "只修改熔炉主槽当前装备的潜能。"),
-        new(MaterialsEditorId, "资源", GameEditorKind.Custom, 400, "全部词缀碎片、符文、雕文和副本钥匙；未拥有的资源显示为 0。"),
+        new(MaterialsEditorId, "资源", GameEditorKind.Custom, 400, "词缀碎片、符文与雕文、副本钥匙按分类直接显示；未拥有的资源显示为 0。"),
         new(MonolithEditorId, "异界进度", GameEditorKind.Custom, 500, "最高腐化与已有时间线进度。"),
         new(WorldEditorId, "世界功能", GameEditorKind.Custom, 600, "调整当前摄像头视野大小。", true)
     ];
@@ -90,8 +90,7 @@ public sealed class LastEpochGameAdapter :
             "剩余天赋点、剩余技能点、基础属性与实用倍率。"),
         EquipmentEditorId => new EntityEditorPage(this, context, EquipmentEditorId,
             "只修改熔炉主槽当前装备的潜能。"),
-        MaterialsEditorId => new EntityEditorPage(this, context, MaterialsEditorId,
-            "全部词缀碎片、符文、雕文和副本钥匙；未拥有的资源显示为 0。"),
+        MaterialsEditorId => new LastEpochMaterialsEditorPage(this, context),
         MonolithEditorId => new EntityEditorPage(this, context, MonolithEditorId,
             "最高腐化与已有时间线进度。当前角色尚无记录时，进入异界后刷新即可显示。"),
         WorldEditorId => new EntityEditorPage(this, context, WorldEditorId,
