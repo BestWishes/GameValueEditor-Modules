@@ -138,3 +138,10 @@
 - 异界页面的无记录提示由模块注册，避免主程序包含 Last Epoch 专属文案。
 - 人物页面通过 `IGameEditorFieldPolicyProvider` 区分持久化点数与仅本次运行的属性和倍率，运行期字段不再允许锁定或自动重应用。
 - 本版本不改变任何 Last Epoch 内存定位、主线程写入、刷新、保存或回读实现。
+
+## v0.5.3 1.5.1.4 与未知构建只读验证
+
+- 2026-10-06 核验的游戏为单一 `Last Epoch.exe --offline` 主进程，Unity IL2CPP，Steam Build `25711439`，游戏声明版本 `1.5.1.4`。
+- 精确指纹为 EXE `BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E`、GameAssembly `66379C9E1B106C7A517AEF1419090ED2565D1C6689C7A6F644A196CE34B2C03D`、metadata `CE1D015E1162C5529A935A89521F4F3733EB3D37F4CA2DD9688C53C0FC5EAF00`。
+- `LastEpochLiveTest` 只调用适配器 `Supports` 与 `IGameCompatibilityDiagnosticsProvider`；当前构建的离线模式以及 `ValidateCompatibility` 覆盖的全部静态根、实例字段、方法和钩子入口结构均通过。测试没有调用任何写入、刷新或保存路径。
+- 模块因此把该三文件组合加入精确构建清单，并声明 `supportsUnlistedBuildValidation=true`。后续未登记构建只能先下载；每次连接仍重新解析完整语义结构，通过后才启用，失败时保持停用。下载成功本身不能作为兼容证据。

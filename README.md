@@ -29,7 +29,7 @@ catalog.json
 
 - [`game.fzzml` v2.1.2](games/fzzml/docs/README.md)
 - [`game.worldapart` v1.3.2](games/worldapart/docs/README.md)
-- [`game.last-epoch` v0.5.2](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
+- [`game.last-epoch` v0.5.3](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
 
 具体功能、线程、保存链路和实机证据只维护在对应游戏目录，不复制到主程序架构文档。
 

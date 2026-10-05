@@ -146,6 +146,7 @@ if (-not $SkipCatalog) {
         $existingSnapshots += [pscustomobject]@{
             version = [string]$entry.version
             hostApiVersion = [int]$entry.hostApiVersion
+            supportsUnlistedBuildValidation = $entry.PSObject.Properties.Name -contains 'supportsUnlistedBuildValidation' -and [bool]$entry.supportsUnlistedBuildValidation
             minimumHostVersion = $legacyMinimumHostVersion
             maximumHostVersion = $legacyMaximumHostVersion
             compatibleBuilds = @($entry.compatibleBuilds)
@@ -161,6 +162,8 @@ if (-not $SkipCatalog) {
             $entry | Add-Member -NotePropertyName $property -NotePropertyValue $manifest.$property -Force
         }
     }
+    $supportsUnlistedBuildValidation = $manifest.PSObject.Properties.Name -contains 'supportsUnlistedBuildValidation' -and [bool]$manifest.supportsUnlistedBuildValidation
+    $entry | Add-Member -NotePropertyName supportsUnlistedBuildValidation -NotePropertyValue $supportsUnlistedBuildValidation -Force
     $entry | Add-Member -NotePropertyName contributors -NotePropertyValue @($contributorsDocument.contributors) -Force
     $downloadUrl = "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/$Game-v$Version/$archiveName"
     $entry | Add-Member -NotePropertyName downloadUrl -NotePropertyValue $downloadUrl -Force
@@ -169,6 +172,7 @@ if (-not $SkipCatalog) {
     $newSnapshot = [pscustomobject]@{
         version = $Version
         hostApiVersion = [int]$manifest.hostApiVersion
+        supportsUnlistedBuildValidation = $supportsUnlistedBuildValidation
         minimumHostVersion = [string]$manifest.minimumHostVersion
         maximumHostVersion = if ($manifest.PSObject.Properties.Name -contains 'maximumHostVersion') { $manifest.maximumHostVersion } else { $null }
         compatibleBuilds = @($manifest.compatibleBuilds)

@@ -40,6 +40,10 @@ foreach ($directory in Get-ChildItem -LiteralPath $gamesRoot -Directory | Sort-O
 
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $gameName = $directory.Name
+    $supportsUnlistedBuildValidation = $manifest.PSObject.Properties.Name -contains 'supportsUnlistedBuildValidation' -and [bool]$manifest.supportsUnlistedBuildValidation
+    if ($supportsUnlistedBuildValidation -and [int]$manifest.hostApiVersion -lt 5) {
+        throw "$($manifest.id) unlisted-build validation requires Host API 5 or newer diagnostics."
+    }
     $null = ConvertTo-ReleaseVersion ([string]$manifest.version)
     Assert-NextReleaseVersion -RepositoryRoot $repoRoot -Version ([string]$manifest.version) `
         -TagPattern "$gameName-v*" -TagPrefix "$gameName-v" -AllowExistingTag
@@ -108,6 +112,11 @@ if (-not $SkipCatalog) {
                 throw "Catalog entry $($entry.id) has stale $property metadata."
             }
         }
+        $sourceSupportsUnlisted = $source.PSObject.Properties.Name -contains 'supportsUnlistedBuildValidation' -and [bool]$source.supportsUnlistedBuildValidation
+        $entrySupportsUnlisted = $entry.PSObject.Properties.Name -contains 'supportsUnlistedBuildValidation' -and [bool]$entry.supportsUnlistedBuildValidation
+        if ($entrySupportsUnlisted -ne $sourceSupportsUnlisted) {
+            throw "Catalog entry $($entry.id) has stale supportsUnlistedBuildValidation metadata."
+        }
         $sourceLegacyIds = if ($source.PSObject.Properties.Name -contains "legacyIds") { @($source.legacyIds) } else { @() }
         $entryLegacyIds = if ($entry.PSObject.Properties.Name -contains "legacyIds") { @($entry.legacyIds) } else { @() }
         if ((ConvertTo-ComparableJson $entryLegacyIds) -ne (ConvertTo-ComparableJson $sourceLegacyIds)) {
@@ -148,6 +157,10 @@ if (-not $SkipCatalog) {
             if ((ConvertTo-ComparableJson $latestRelease.$property) -ne (ConvertTo-ComparableJson $entry.$property)) {
                 throw "Catalog entry $($entry.id) latest release has stale $property metadata."
             }
+        }
+        $latestSupportsUnlisted = $latestRelease.PSObject.Properties.Name -contains 'supportsUnlistedBuildValidation' -and [bool]$latestRelease.supportsUnlistedBuildValidation
+        if ($latestSupportsUnlisted -ne $entrySupportsUnlisted) {
+            throw "Catalog entry $($entry.id) latest release has stale supportsUnlistedBuildValidation metadata."
         }
     }
     if ($catalog.modules.Count -ne $manifests.Count) {
