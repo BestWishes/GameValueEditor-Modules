@@ -1,17 +1,17 @@
 {
-  "schemaVersion": 3,
-  "hostApiVersion": 4,
+  "schemaVersion": 4,
+  "hostApiVersion": 6,
   "modules": [
     {
       "id": "game.fzzml",
       "legacyIds": [
         "game.fzzml.inventory.v1"
       ],
-      "version": "2.1.0",
+      "version": "2.1.1",
       "displayName": "放置斩魔录专属修改模块",
       "gameDisplayName": "放置斩魔录",
       "description": "包含背包物品与人物属性两个游戏内编辑模块。",
-      "hostApiVersion": 4,
+      "hostApiVersion": 6,
       "processNames": [
         "fzzml"
       ],
@@ -36,14 +36,12 @@
         {
           "id": "game.fzzml.inventory",
           "displayName": "背包物品",
-          "kind": "collection",
           "order": 100,
           "sessionOnly": false
         },
         {
           "id": "game.fzzml.character-attributes",
           "displayName": "人物属性",
-          "kind": "master-detail",
           "order": 200,
           "sessionOnly": true
         }
@@ -58,16 +56,16 @@
           "latestContributionDate": "2026-09-27"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.0/GameValueEditor.Module.Fzzml-v2.1.0.zip",
-      "sha256": "F6C193EB2657E8378B894D29C68B9E2E5C6F8DF81AC6DD69FF3C069E72E096F8"
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.1/GameValueEditor.Module.Fzzml-v2.1.1.zip",
+      "sha256": "9BC5A1F0606CDED58B9320F123E47234481EA63F35653EAC77B9DBCE4D3F4BCF"
     },
     {
       "id": "game.worldapart",
-      "version": "1.3.0",
+      "version": "1.3.1",
       "displayName": "WorldApart 专属修改模块",
       "gameDisplayName": "WorldApart",
       "description": "包含背包物品与人物属性两个可持久化的游戏内编辑模块。",
-      "hostApiVersion": 4,
+      "hostApiVersion": 6,
       "processNames": [
         "WorldApart"
       ],
@@ -87,14 +85,12 @@
         {
           "id": "game.worldapart.inventory",
           "displayName": "背包物品",
-          "kind": "collection",
           "order": 100,
           "sessionOnly": false
         },
         {
           "id": "game.worldapart.character-attributes",
           "displayName": "人物属性",
-          "kind": "master-detail",
           "order": 200,
           "sessionOnly": false
         }
@@ -109,16 +105,16 @@
           "latestContributionDate": "2026-09-28"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.0/GameValueEditor.Module.WorldApart-v1.3.0.zip",
-      "sha256": "61CD621FFD46948F3C225BF5C57B522D68F21788A6791FD50FB2403C90449923"
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.1/GameValueEditor.Module.WorldApart-v1.3.1.zip",
+      "sha256": "9B68523FBF6300C33495CAC983FA8D2C6D824FF1DFBF3FDD60340B0BA3B51AD4"
     },
     {
       "id": "game.last-epoch",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "displayName": "Last Epoch 离线专属修改模块",
       "gameDisplayName": "最后纪元",
       "description": "仅支持离线模式：人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、完整资源槽位、异界进度与摄像头视野；小版本通过 IL2CPP 语义结构校验后自动兼容。",
-      "hostApiVersion": 4,
+      "hostApiVersion": 6,
       "processNames": [
         "Last Epoch"
       ],
@@ -143,35 +139,30 @@
         {
           "id": "game.last-epoch.character-attributes",
           "displayName": "人物属性",
-          "kind": "master-detail",
           "order": 200,
           "sessionOnly": false
         },
         {
           "id": "game.last-epoch.equipment",
           "displayName": "装备编辑",
-          "kind": "master-detail",
           "order": 300,
           "sessionOnly": false
         },
         {
           "id": "game.last-epoch.materials",
           "displayName": "资源",
-          "kind": "master-detail",
           "order": 400,
           "sessionOnly": false
         },
         {
           "id": "game.last-epoch.monolith",
           "displayName": "异界进度",
-          "kind": "master-detail",
           "order": 500,
           "sessionOnly": false
         },
         {
           "id": "game.last-epoch.world",
           "displayName": "世界功能",
-          "kind": "master-detail",
           "order": 600,
           "sessionOnly": true
         }
@@ -186,8 +177,8 @@
           "latestContributionDate": "2026-10-05"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.0/GameValueEditor.Module.LastEpoch-v0.5.0.zip",
-      "sha256": "4DD5899CC64277740DAD09A90839A3CADC1123FC744884038F961C5013619034"
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.1/GameValueEditor.Module.LastEpoch-v0.5.1.zip",
+      "sha256": "60B6921DEC3D34EA7B4567D4C9A123B42ECA341C664DE0472092E7A8AD47D1C0"
     }
   ]
 }
