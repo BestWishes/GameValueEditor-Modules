@@ -29,7 +29,7 @@ $headers = @{
     'User-Agent' = 'GameValueEditor-module-retention'
 }
 $request = @{ Headers = $headers; Proxy = $ProxyUrl; ErrorAction = 'Stop' }
-$releases = @(Invoke-RestMethod -Uri 'https://api.github.com/repos/BestWishes/GameValueEditor-Modules/releases?per_page=100' @request)
+$releases = Invoke-RestMethod -Uri 'https://api.github.com/repos/BestWishes/GameValueEditor-Modules/releases?per_page=100' @request
 $plan = Get-ReleaseRetentionPlan -Releases $releases -TagPrefix "$Game-v" -ExpectedAssetName {
     param($version) "GameValueEditor.Module.$slug-v$version.zip"
 }
