@@ -7,6 +7,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+if ($SkipCatalog -and $VerifyReleasedVersions) {
+    throw 'VerifyReleasedVersions requires the published catalog and cannot be combined with SkipCatalog.'
+}
 
 & (Join-Path $repoRoot "scripts\test-release-retention.ps1")
 if ([string]::IsNullOrWhiteSpace($HostRepository)) {
@@ -32,10 +35,20 @@ if ($LASTEXITCODE -ne 0) { throw "Module SDK build failed with code $LASTEXITCOD
 if (-not $integrationDirectory.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Integration package directory escaped the repository."
 }
-if (Test-Path -LiteralPath $integrationDirectory) {
-    Remove-Item -LiteralPath $integrationDirectory -Recurse -Force
+if ($VerifyReleasedVersions) {
+    if (-not (Test-Path -LiteralPath $integrationDirectory)) {
+        throw "Released package verification requires the original verified archives: $integrationDirectory"
+    }
 }
-New-Item -ItemType Directory -Path $integrationDirectory -Force | Out-Null
+else {
+    if (Test-Path -LiteralPath $integrationDirectory) {
+        Remove-Item -LiteralPath $integrationDirectory -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $integrationDirectory -Force | Out-Null
+}
+$catalog = if ($VerifyReleasedVersions) {
+    Get-Content -LiteralPath (Join-Path $repoRoot 'catalog.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+} else { $null }
 
 $archives = @()
 foreach ($directory in Get-ChildItem -LiteralPath (Join-Path $repoRoot "games") -Directory | Sort-Object Name) {
@@ -47,13 +60,30 @@ foreach ($directory in Get-ChildItem -LiteralPath (Join-Path $repoRoot "games") 
     dotnet build $projectFiles[0].FullName -c Release
     if ($LASTEXITCODE -ne 0) { throw "$($manifest.id) release build failed with code $LASTEXITCODE." }
 
-    & (Join-Path $repoRoot "scripts\Publish-GameModule.ps1") -Game $directory.Name `
-        -OutputDirectory $integrationDirectory -SkipCatalog `
-        -VerifyReleasedVersion:$VerifyReleasedVersions
+    if (-not $VerifyReleasedVersions) {
+        & (Join-Path $repoRoot "scripts\Publish-GameModule.ps1") -Game $directory.Name `
+            -OutputDirectory $integrationDirectory -SkipCatalog
+    }
     $releaseSlug = [System.IO.Path]::GetFileNameWithoutExtension([string]$manifest.assemblyFile) `
         -replace '^GameValueEditor\.Modules\.', ''
     $archivePath = Join-Path $integrationDirectory "GameValueEditor.Module.$releaseSlug-v$($manifest.version).zip"
-    if (-not (Test-Path -LiteralPath $archivePath)) { throw "Module archive was not created: $archivePath" }
+    if (-not (Test-Path -LiteralPath $archivePath)) { throw "Module archive is unavailable: $archivePath" }
+    if ($VerifyReleasedVersions) {
+        $catalogModule = @($catalog.modules | Where-Object { [string]$_.id -eq [string]$manifest.id }) |
+            Select-Object -First 1
+        $catalogRelease = @($catalogModule.releases | Where-Object {
+            [string]$_.version -eq [string]$manifest.version
+        }) | Select-Object -First 1
+        if ($null -eq $catalogRelease) {
+            throw "$($manifest.id) v$($manifest.version) is missing from the published catalog history."
+        }
+        $archiveItem = Get-Item -LiteralPath $archivePath
+        $archiveHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
+        if ($archiveItem.Length -ne [long]$catalogRelease.sizeBytes -or
+            $archiveHash -ne [string]$catalogRelease.sha256) {
+            throw "$($manifest.id) original release archive does not match catalog size/SHA-256."
+        }
+    }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($archivePath)
     try {
