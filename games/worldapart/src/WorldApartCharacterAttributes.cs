@@ -85,7 +85,7 @@ public sealed partial class WorldApartGameAdapter
             throw new InvalidOperationException("当前 WorldApart 构建尚未支持人物属性编辑。");
         lock (WriteGate)
         {
-            using var session = new Session(process.ProcessId, ResolveLayout(process));
+            using var session = new Session(process, ResolveLayout(process));
             return [session.ReadCharacter()];
         }
     }
@@ -104,7 +104,7 @@ public sealed partial class WorldApartGameAdapter
 
         lock (WriteGate)
         {
-            using var session = new Session(process.ProcessId, ResolveLayout(process));
+            using var session = new Session(process, ResolveLayout(process));
             return session.WriteCharacterAttribute(attributeKey, targetValue);
         }
     }

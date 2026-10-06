@@ -47,9 +47,7 @@ public sealed partial class WorldApartGameAdapter :
             IntDictionarySetItem: 0x4ED6B60,
             ApplicationGetVersion: 0,
             ApplicationGetProductName: 0,
-            ApplicationGetBuildGuid: 0,
-            AllowStructuralMatch: false,
-            StructuralSignatures: []),
+            ApplicationGetBuildGuid: 0),
         new(
             "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
             "EDE8A956051C0C831F79E0874AFF28297F41D3FA18C18AD2CA2FF16C33D0938D",
@@ -73,27 +71,7 @@ public sealed partial class WorldApartGameAdapter :
             IntDictionarySetItem: 0x4EE3C10,
             ApplicationGetVersion: 0x631D330,
             ApplicationGetProductName: 0x631D1E0,
-            ApplicationGetBuildGuid: 0x631CF90,
-            AllowStructuralMatch: true,
-            StructuralSignatures:
-            [
-                Signature(0x14E74D0, "4883EC28803D4C71070700751F488D0D"),
-                Signature(0x1A1F3A0, "40534883EC20803D1A1BB40600488BD9"),
-                Signature(0xE2DF40, "4883EC28803DF8D77207007513488D0D"),
-                Signature(0xE2E030, "4883EC28803D06D7720700751F488D0D"),
-                Signature(0xE31680, "40534883EC20488BD9C6413800488B49"),
-                Signature(0xEDA1E0, "48895C24104889742418574883EC7048"),
-                Signature(0xED8F80, "488B49204885C97417807940007411FF"),
-                Signature(0x14D3660, "4883EC28488B49104885C9740B33D248"),
-                Signature(0xDF50C0, "48895C2418554883EC20803D0F647607"),
-                Signature(0xE9F740, "48895C24184889742420574881EC8000"),
-                Signature(0xEC82B0, "40534883EC2033D2488BD9E860F9FFFF"),
-                Signature(0xEC8410, "40534883EC2033D2488BD9E830F9FFFF"),
-                Signature(0x4EE3C10, "4883EC38498B41204C8B88C000000049"),
-                Signature(0x631D330, "4883EC28488B051DBC25024885C07513"),
-                Signature(0x631D1E0, "4883EC28488B057DBD25024885C07513"),
-                Signature(0x631CF90, "4883EC28488B057DBF25024885C07513")
-            ])
+            ApplicationGetBuildGuid: 0x631CF90)
     ];
 
     public string Id => "game.worldapart";
@@ -125,23 +103,24 @@ public sealed partial class WorldApartGameAdapter :
         var supported = Supports(process, fingerprint);
         return
         [
-            new("构建与结构签名",
+            new("完整运行构建指纹",
                 supported ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
-                supported ? "当前构建通过精确指纹或完整语义结构校验。" : "当前构建未通过模块的构建与结构校验。"),
-            new("模块自有页面", GameCompatibilityDiagnosticStatus.Passed,
-                $"模块将创建 {Editors.Count} 个独立 WPF 页面。")
+                supported ? "当前构建匹配已验证的 GameAssembly 与 metadata 完整指纹组合；实际读取前还会核对运行进程。" :
+                    "当前运行文件组合未验证；不会依据短函数签名套用旧偏移。"),
+            new("模块自有页面", GameCompatibilityDiagnosticStatus.Information,
+                $"已注册 {Editors.Count} 个独立 WPF 页面；诊断未执行页面读写。")
         ];
     }
 
     public GameDeclaredVersionInfo ReadGameVersionMetadata(GameProcessContext process)
     {
-        using var session = new Session(process.ProcessId, ResolveLayout(process), initializeRoots: false);
+        using var session = new Session(process, ResolveLayout(process), initializeRoots: false);
         return session.ReadGameDeclaredVersion();
     }
 
     public IReadOnlyList<AdapterInventoryItem> ReadInventory(GameProcessContext process)
     {
-        using var session = new Session(process.ProcessId, ResolveLayout(process));
+        using var session = new Session(process, ResolveLayout(process));
         return session.ReadInventory();
     }
 
@@ -155,7 +134,7 @@ public sealed partial class WorldApartGameAdapter :
             if (!int.TryParse(entityId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var itemId) ||
                 !string.Equals(fieldId, "count", StringComparison.Ordinal))
                 throw new InvalidOperationException("背包快捷入口的物品语义键无效。");
-            using var session = new Session(process.ProcessId, ResolveLayout(process));
+            using var session = new Session(process, ResolveLayout(process));
             var item = session.ReadInventory().SingleOrDefault(candidate =>
                 TryParseInventoryFieldKey(candidate.FieldKey, out var candidateId) && candidateId == itemId)
                 ?? throw new InvalidOperationException($"当前背包中没有物品 ID {itemId}。物品重新获得后可继续使用此快捷入口。");
@@ -189,7 +168,7 @@ public sealed partial class WorldApartGameAdapter :
                 throw new InvalidOperationException("背包快捷入口的物品语义键无效。");
             lock (WriteGate)
             {
-                using var session = new Session(process.ProcessId, ResolveLayout(process));
+                using var session = new Session(process, ResolveLayout(process));
                 var updated = session.WriteInventory(itemId, targetValue);
                 return new AdapterFieldValue(fieldKey, updated.CountDisplay, "已实时写入、刷新并调用游戏自身保存流程");
             }
@@ -217,11 +196,9 @@ public sealed partial class WorldApartGameAdapter :
 
     private static string ComputeSha256(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         return Convert.ToHexString(SHA256.HashData(stream));
     }
-
-    private static CodeSignature Signature(ulong rva, string hex) => new(rva, Convert.FromHexString(hex));
 
     private static bool TryResolveLayout(
         GameProcessContext process,
@@ -239,9 +216,6 @@ public sealed partial class WorldApartGameAdapter :
         layout = SupportedBuilds.FirstOrDefault(candidate => candidate.MatchesRuntimeContent(
             fingerprint.GameAssemblySha256,
             fingerprint.MetadataSha256))!;
-        if (layout is not null) return true;
-        layout = SupportedBuilds.FirstOrDefault(candidate => candidate.AllowStructuralMatch &&
-            MatchesStructuralSignatures(process.ProcessId, candidate))!;
         return layout is not null;
     }
 
@@ -253,21 +227,34 @@ public sealed partial class WorldApartGameAdapter :
             var executableName = Path.GetFileNameWithoutExtension(process.ExecutablePath);
             var assembly = Path.Combine(root, "GameAssembly.dll");
             var metadata = ResolveMetadataPath(root, executableName);
-            var executableInfo = new FileInfo(process.ExecutablePath);
-            var assemblyInfo = new FileInfo(assembly);
-            var metadataInfo = new FileInfo(metadata);
-            var cacheKey = $"{process.ExecutablePath}|{executableInfo.Length}:{executableInfo.LastWriteTimeUtc.Ticks}|" +
-                           $"{assemblyInfo.Length}:{assemblyInfo.LastWriteTimeUtc.Ticks}|{metadataInfo.Length}:{metadataInfo.LastWriteTimeUtc.Ticks}";
-            return LayoutCache.GetOrAdd(cacheKey, _ =>
+            using var actualProcess = Process.GetProcessById(process.ProcessId);
+            var startTime = actualProcess.StartTime.ToUniversalTime();
+            if (startTime != process.StartTimeUtc.ToUniversalTime() || actualProcess.HasExited ||
+                !SamePath(actualProcess.MainModule?.FileName, process.ExecutablePath))
+                throw new InvalidOperationException("WorldApart 进程身份已变化，请重新连接游戏。");
+            var loadedAssembly = actualProcess.Modules.Cast<ProcessModule>().SingleOrDefault(module =>
+                module.ModuleName.Equals("GameAssembly.dll", StringComparison.OrdinalIgnoreCase));
+            if (!SamePath(loadedAssembly?.FileName, assembly))
+                throw new InvalidOperationException("运行进程加载的 GameAssembly 与待验证文件不一致。");
+            var paths = new[] { process.ExecutablePath, assembly, metadata };
+            var before = paths.Select(ReadStamp).ToArray();
+            var cacheKey = $"{process.ProcessId}|{startTime.Ticks}|{string.Join<FileStamp>("|", before)}";
+            if (LayoutCache.Count >= 32) LayoutCache.Clear();
+            var verified = LayoutCache.GetOrAdd(cacheKey, _ =>
             {
                 var executableHash = ComputeSha256(process.ExecutablePath);
                 var assemblyHash = ComputeSha256(assembly);
                 var metadataHash = ComputeSha256(metadata);
                 var identity = new GameBuildIdentity(executableHash, string.Empty, assemblyHash, metadataHash);
+                if (!before.SequenceEqual(paths.Select(ReadStamp)) || actualProcess.HasExited)
+                    throw new InvalidOperationException("构建验证期间文件或进程已变化，已停止操作。");
                 if (TryResolveLayout(process, identity, out var layout)) return layout;
                 throw new InvalidOperationException(
                     "当前 WorldApart 构建尚未通过专属修改布局校验。为避免误写，未知版本不会套用旧偏移。");
             });
+            if (!before.SequenceEqual(paths.Select(ReadStamp)) || actualProcess.HasExited)
+                throw new InvalidOperationException("已验证构建文件或进程已变化，已停止操作。");
+            return verified;
         }
         catch (FileNotFoundException exception)
         {
@@ -290,37 +277,22 @@ public sealed partial class WorldApartGameAdapter :
         return candidates.Count == 1 ? candidates[0] : preferred;
     }
 
-    private static bool MatchesStructuralSignatures(int processId, BuildLayout layout)
+    private static bool SamePath(string? left, string right) => left is not null &&
+        string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
+
+    private static FileStamp ReadStamp(string path)
     {
-        if (layout.StructuralSignatures.Count == 0) return false;
-        try
-        {
-            using var process = Process.GetProcessById(processId);
-            var module = process.Modules.Cast<ProcessModule>().SingleOrDefault(candidate =>
-                string.Equals(candidate.ModuleName, "GameAssembly.dll", StringComparison.OrdinalIgnoreCase));
-            if (module is null) return false;
-            var handle = OpenProcess(0x0010 | 0x0400, false, processId);
-            if (handle == IntPtr.Zero) return false;
-            try
-            {
-                var moduleBase = unchecked((ulong)module.BaseAddress.ToInt64());
-                foreach (var signature in layout.StructuralSignatures)
-                {
-                    var actual = new byte[signature.Bytes.Length];
-                    if (!ReadProcessMemory(handle, (IntPtr)(long)(moduleBase + signature.Rva), actual,
-                            (nuint)actual.Length, out var read) || read != (nuint)actual.Length ||
-                        !actual.AsSpan().SequenceEqual(signature.Bytes))
-                        return false;
-                }
-                return true;
-            }
-            finally { CloseHandle(handle); }
-        }
-        catch
-        {
-            return false;
-        }
+        var info = new FileInfo(path);
+        if (!info.Exists || (info.Attributes & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidOperationException("构建文件缺失或为链接，已停止操作。");
+        return new(info.FullName, info.Length, info.LastWriteTimeUtc.Ticks);
     }
+
+    private sealed record FileStamp(string Path, long Length, long ModifiedTicks);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetProcessTimes(IntPtr handle, out long creation, out long exit, out long kernel, out long user);
 
     private sealed partial class Session : IDisposable
     {
@@ -341,8 +313,9 @@ public sealed partial class WorldApartGameAdapter :
         private ulong _player;
         private ulong _tables;
 
-        public Session(int processId, BuildLayout layout, bool initializeRoots = true)
+        public Session(GameProcessContext context, BuildLayout layout, bool initializeRoots = true)
         {
+            var processId = context.ProcessId;
             _layout = layout;
             _process = Process.GetProcessById(processId);
             var module = _process.Modules.Cast<ProcessModule>().SingleOrDefault(candidate =>
@@ -354,12 +327,25 @@ public sealed partial class WorldApartGameAdapter :
                 throw new Win32Exception(Marshal.GetLastWin32Error(),
                     "无法连接 WorldApart 进程。可以尝试以管理员身份运行本应用。");
 
-            var exports = PortableExportResolver.Read(module.FileName);
-            _domainGet = _moduleBase + exports.GetRequired("il2cpp_domain_get");
-            _threadAttach = _moduleBase + exports.GetRequired("il2cpp_thread_attach");
-            _threadDetach = _moduleBase + exports.GetRequired("il2cpp_thread_detach");
-            _classGetMethodFromName = _moduleBase + exports.GetRequired("il2cpp_class_get_method_from_name");
-            if (initializeRoots) RefreshRoots();
+            try
+            {
+                if (!GetProcessTimes(_handle, out var created, out _, out _, out _) ||
+                    DateTime.FromFileTimeUtc(created) != context.StartTimeUtc.ToUniversalTime() ||
+                    !SamePath(module.FileName, Path.Combine(Path.GetDirectoryName(context.ExecutablePath)!, "GameAssembly.dll")))
+                    throw new InvalidOperationException("WorldApart 进程实例或加载文件已变化，请重新连接。");
+                var exports = PortableExportResolver.Read(module.FileName);
+                _domainGet = _moduleBase + exports.GetRequired("il2cpp_domain_get");
+                _threadAttach = _moduleBase + exports.GetRequired("il2cpp_thread_attach");
+                _threadDetach = _moduleBase + exports.GetRequired("il2cpp_thread_detach");
+                _classGetMethodFromName = _moduleBase + exports.GetRequired("il2cpp_class_get_method_from_name");
+                if (initializeRoots) RefreshRoots();
+            }
+            catch
+            {
+                CloseHandle(_handle);
+                _process.Dispose();
+                throw;
+            }
         }
 
         private void RefreshRoots()
@@ -885,9 +871,7 @@ public sealed partial class WorldApartGameAdapter :
         ulong IntDictionarySetItem,
         ulong ApplicationGetVersion,
         ulong ApplicationGetProductName,
-        ulong ApplicationGetBuildGuid,
-        bool AllowStructuralMatch,
-        IReadOnlyList<CodeSignature> StructuralSignatures)
+        ulong ApplicationGetBuildGuid)
     {
         public bool Matches(string executable, string assembly, string metadata) =>
             string.Equals(ExecutableSha256, executable, StringComparison.OrdinalIgnoreCase) &&
@@ -900,8 +884,6 @@ public sealed partial class WorldApartGameAdapter :
             string.Equals(GameAssemblySha256, assembly, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(MetadataSha256, metadata, StringComparison.OrdinalIgnoreCase);
     }
-
-    private sealed record CodeSignature(ulong Rva, byte[] Bytes);
 
     private sealed record BagRow(ulong Address, int ItemId, int Count);
     private sealed record MemoryWrite(ulong Address, int Value);

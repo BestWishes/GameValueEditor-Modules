@@ -1,6 +1,6 @@
 {
   "id": "game.worldapart",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "displayName": "WorldApart 专属修改模块",
   "gameDisplayName": "WorldApart",
   "description": "包含背包物品与人物属性两个可持久化的游戏内编辑模块。",

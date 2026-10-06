@@ -76,13 +76,21 @@ public sealed partial class FzzmlGameAdapter :
         GameBuildIdentity fingerprint)
     {
         var supported = Supports(process, fingerprint);
+        var characterSupported = supported &&
+            string.Equals(fingerprint.GameAssemblySha256, CharacterBuildAssembly, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(fingerprint.MetadataSha256, CharacterBuildMetadata, StringComparison.OrdinalIgnoreCase);
         return
         [
             new("三文件构建指纹",
                 supported ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
                 supported ? "当前构建与模块登记的精确指纹一致。" : "当前构建不在模块已验证指纹列表中。"),
-            new("模块自有页面", GameCompatibilityDiagnosticStatus.Passed,
-                $"模块将创建 {Editors.Count} 个独立 WPF 页面。")
+            new("背包物品构建支持", supported ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
+                supported ? "当前构建支持背包物品布局；未在诊断中执行读写。" : "当前构建不支持背包物品布局。"),
+            new("人物属性构建支持", characterSupported ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Warning,
+                characterSupported ? "当前构建支持人物属性布局；修改仅本次运行有效，未在诊断中执行读写。" :
+                    "当前构建不支持人物属性编辑；页面注册不代表该功能可用，背包支持请单独查看。"),
+            new("模块自有页面", GameCompatibilityDiagnosticStatus.Information,
+                $"已注册 {Editors.Count} 个独立 WPF 页面，不代表当前构建支持全部页面。")
         ];
     }
 

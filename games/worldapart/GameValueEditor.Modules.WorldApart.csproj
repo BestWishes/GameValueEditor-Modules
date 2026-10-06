@@ -9,7 +9,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>GameValueEditor.Modules.WorldApart</AssemblyName>
     <RootNamespace>GameValueEditor.Modules.WorldApart</RootNamespace>
-    <ModuleVersion Condition="'$(ModuleVersion)' == ''">1.3.2</ModuleVersion>
+    <ModuleVersion Condition="'$(ModuleVersion)' == ''">1.3.3</ModuleVersion>
     <Version>$(ModuleVersion)</Version>
   </PropertyGroup>
 
