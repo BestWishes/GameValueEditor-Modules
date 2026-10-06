@@ -24,18 +24,20 @@ public sealed class LastEpochLiveTest : IModuleLiveTest
             string.Equals(build.ExecutableSha256, ExpectedExecutableSha256, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(build.GameAssemblySha256, ExpectedGameAssemblySha256, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(build.MetadataSha256, ExpectedMetadataSha256, StringComparison.OrdinalIgnoreCase),
-            "The running Last Epoch build is not the exact build being approved for v0.5.3.");
+            "The running Last Epoch build is not the exact build being approved for v0.5.4.");
 
         var adapter = new LastEpochGameAdapter();
         LiveTestSupport.Assert(adapter.Supports(process, build),
-            "Last Epoch v0.5.3 rejected the current offline build during read-only semantic validation.");
+            "Last Epoch v0.5.4 rejected the current offline build during read-only validation.");
 
         var diagnostics = ((IGameCompatibilityDiagnosticsProvider)adapter)
             .GetCompatibilityDiagnostics(process, build);
         LiveTestSupport.Assert(diagnostics.Any(item =>
                 item.DisplayName == "离线进程" && item.Status == GameCompatibilityDiagnosticStatus.Passed) &&
             diagnostics.Any(item =>
-                item.DisplayName == "IL2CPP 语义结构" && item.Status == GameCompatibilityDiagnosticStatus.Passed),
-            "Last Epoch read-only diagnostics did not confirm offline mode and the complete IL2CPP structure.");
+                item.DisplayName == "IL2CPP 语义结构" && item.Status == GameCompatibilityDiagnosticStatus.Passed) &&
+            diagnostics.Any(item =>
+                item.DisplayName == "已验证构建与固定布局" && item.Status == GameCompatibilityDiagnosticStatus.Passed),
+            "Last Epoch diagnostics did not confirm offline mode, verified build and runtime structure.");
     }
 }

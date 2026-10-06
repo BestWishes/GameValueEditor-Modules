@@ -112,6 +112,8 @@ internal sealed class LastEpochRuntime : IDisposable
 
     public LastEpochRuntime(int processId)
     {
+        // Fixed layouts are usable only for a complete, approved build. Guard before any remote call/allocation.
+        LastEpochBuildGuard.EnsureVerifiedProcess(processId);
         _process = Process.GetProcessById(processId);
         _handle = new SafeFileHandle(OpenProcess(ProcessAccess, false, processId), true);
         if (_handle.IsInvalid)
