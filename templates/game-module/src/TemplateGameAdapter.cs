@@ -6,7 +6,7 @@ namespace GameValueEditor.Modules.__CLASS__;
 public sealed class __CLASS__GameAdapter :
     IGameAdapter,
     IEntityEditorsGameAdapter,
-    IGameEditorPageFactoryProvider,
+    ICoordinatedGameEditorPageProvider,
     IGameCompatibilityDiagnosticsProvider
 {
     private const string MainEditorId = "__MODULE_ID__.main";

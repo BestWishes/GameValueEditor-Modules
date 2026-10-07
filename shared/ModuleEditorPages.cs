@@ -22,6 +22,20 @@ internal abstract class ModuleEditorPageBase : IGameEditorPage
 
     protected GameEditorPageContext Context { get; }
     protected UserControl Root { get; }
+    protected Task<AdapterFieldValue> WriteFieldAsync(string key, string value)
+    {
+        ThrowIfExpired();
+        return Context.Host is IGameEditorFieldOperations operations
+            ? operations.WriteFieldAsync(key, value)
+            : throw new InvalidOperationException("当前主程序不支持协调写入，请更新主程序。");
+    }
+    protected Task ReadSnapshotAsync<T>(Func<T> read, Action<T> apply)
+    {
+        ThrowIfExpired();
+        return Context.Host is IGameEditorSnapshotOperations operations
+            ? operations.ReadSnapshotAsync(read, result => { ThrowIfExpired(); apply(result); })
+            : throw new InvalidOperationException("当前主程序不支持安全刷新，请更新主程序。");
+    }
     public FrameworkElement View => Root;
 
     protected abstract Task LoadAsync();
@@ -36,6 +50,10 @@ internal abstract class ModuleEditorPageBase : IGameEditorPage
         }
         catch (OperationCanceledException) when (Context.Lifetime.IsCancellationRequested)
         {
+        }
+        catch (GameEditorSnapshotChangedException exception)
+        {
+            Context.Host.ReportStatus(exception.Message);
         }
         catch (Exception exception)
         {
@@ -162,13 +180,14 @@ internal sealed class InventoryEditorPage : ModuleEditorPageBase
     private async Task RefreshAsync()
     {
         Context.Host.ReportStatus("正在读取游戏背包…");
-        var items = await Task.Run(() => _adapter.ReadInventory(Context.Process), Context.Lifetime);
-        ThrowIfExpired();
-        _items.Clear();
-        foreach (var item in items) _items.Add(item);
-        _itemsView.Refresh();
-        if (_items.Count > 0) _grid.SelectedIndex = 0;
-        Context.Host.ReportStatus($"已读取 {_items.Count:N0} 种背包物品");
+        await ReadSnapshotAsync(() => _adapter.ReadInventory(Context.Process), items =>
+        {
+            _items.Clear();
+            foreach (var item in items) _items.Add(item);
+            _itemsView.Refresh();
+            if (_items.Count > 0) _grid.SelectedIndex = 0;
+            Context.Host.ReportStatus($"已读取 {_items.Count:N0} 种背包物品");
+        });
     }
 
     private async Task EditSelectedAsync()
@@ -184,14 +203,10 @@ internal sealed class InventoryEditorPage : ModuleEditorPageBase
             selected.Length == 1 ? selected[0].CountDisplay : string.Empty));
         if (value is null) return;
         Context.Host.ReportStatus($"正在修改 {selected.Length:N0} 种背包物品…");
-        await Task.Run(() =>
+        foreach (var item in selected)
         {
-            foreach (var item in selected)
-            {
-                Context.Lifetime.ThrowIfCancellationRequested();
-                _adapter.WriteField(Context.Process, item.FieldKey, value);
-            }
-        }, Context.Lifetime);
+            await WriteFieldAsync(item.FieldKey, value);
+        }
         await RefreshAsync();
     }
 
@@ -312,12 +327,13 @@ internal sealed class CharacterEditorPage : ModuleEditorPageBase
     {
         var selectedId = (_characterList.SelectedItem as AdapterCharacterItem)?.CharacterId;
         Context.Host.ReportStatus("正在读取人物属性…");
-        var characters = await Task.Run(() => _adapter.ReadCharacters(Context.Process), Context.Lifetime);
-        ThrowIfExpired();
-        _characters.Clear();
-        foreach (var character in characters) _characters.Add(character);
-        _characterList.SelectedItem = _characters.FirstOrDefault(item => item.CharacterId == selectedId) ?? _characters.FirstOrDefault();
-        Context.Host.ReportStatus($"已读取 {_characters.Count:N0} 个人物");
+        await ReadSnapshotAsync(() => _adapter.ReadCharacters(Context.Process), characters =>
+        {
+            _characters.Clear();
+            foreach (var character in characters) _characters.Add(character);
+            _characterList.SelectedItem = _characters.FirstOrDefault(item => item.CharacterId == selectedId) ?? _characters.FirstOrDefault();
+            Context.Host.ReportStatus($"已读取 {_characters.Count:N0} 个人物");
+        });
     }
 
     private void BindAttributes()
@@ -345,7 +361,7 @@ internal sealed class CharacterEditorPage : ModuleEditorPageBase
         if (value is null) return;
         var fieldKey = ModuleFieldKey.Create(_editorId, character.CharacterId, attribute.Key);
         Context.Host.ReportStatus($"正在修改 {character.DisplayName} 的{attribute.DisplayName}…");
-        await Task.Run(() => _adapter.WriteField(Context.Process, fieldKey, value), Context.Lifetime);
+        await WriteFieldAsync(fieldKey, value);
         await RefreshAsync();
         _characterList.SelectedItem = _characters.FirstOrDefault(item => item.CharacterId == character.CharacterId);
         _attributeGrid.SelectedItem = (_characterList.SelectedItem as AdapterCharacterItem)?.Attributes
@@ -464,14 +480,15 @@ internal sealed class EntityEditorPage : ModuleEditorPageBase
     {
         var selectedId = (_entityList.SelectedItem as AdapterEditorEntity)?.EntityId;
         Context.Host.ReportStatus("正在读取模块页面数据…");
-        var entities = await Task.Run(() => _adapter.ReadEditorEntities(Context.Process, _editorId), Context.Lifetime);
-        ThrowIfExpired();
-        _entities.Clear();
-        foreach (var entity in entities) _entities.Add(entity);
-        _entityView.Refresh();
-        _empty.Visibility = _entities.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        _entityList.SelectedItem = _entities.FirstOrDefault(item => item.EntityId == selectedId) ?? _entities.FirstOrDefault();
-        Context.Host.ReportStatus($"已读取 {_entities.Count:N0} 个项目");
+        await ReadSnapshotAsync(() => _adapter.ReadEditorEntities(Context.Process, _editorId), entities =>
+        {
+            _entities.Clear();
+            foreach (var entity in entities) _entities.Add(entity);
+            _entityView.Refresh();
+            _empty.Visibility = _entities.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            _entityList.SelectedItem = _entities.FirstOrDefault(item => item.EntityId == selectedId) ?? _entities.FirstOrDefault();
+            Context.Host.ReportStatus($"已读取 {_entities.Count:N0} 个项目");
+        });
     }
 
     private void BindFields()
@@ -509,7 +526,7 @@ internal sealed class EntityEditorPage : ModuleEditorPageBase
         if (value is null) return;
         var fieldKey = ModuleFieldKey.Create(_editorId, entity.EntityId, field.Key);
         Context.Host.ReportStatus($"正在修改 {entity.DisplayName} 的{field.DisplayName}…");
-        await Task.Run(() => _adapter.WriteField(Context.Process, fieldKey, value), Context.Lifetime);
+        await WriteFieldAsync(fieldKey, value);
         await RefreshAsync();
         _entityList.SelectedItem = _entities.FirstOrDefault(item => item.EntityId == entity.EntityId);
         _fieldGrid.SelectedItem = (_entityList.SelectedItem as AdapterEditorEntity)?.Fields

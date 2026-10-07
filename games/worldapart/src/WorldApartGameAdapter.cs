@@ -15,7 +15,7 @@ public sealed partial class WorldApartGameAdapter :
     IInventoryGameAdapter,
     ICharacterAttributesGameAdapter,
     IGameVersionMetadataProvider,
-    IGameEditorPageFactoryProvider,
+    ICoordinatedGameEditorPageProvider,
     IGameCompatibilityDiagnosticsProvider
 {
     private const string InventoryEditorId = "game.worldapart.inventory";

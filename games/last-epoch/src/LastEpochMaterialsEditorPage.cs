@@ -12,7 +12,7 @@ internal sealed class LastEpochMaterialsEditorPage : ModuleEditorPageBase
 {
     private static readonly string[] CategoryOrder = ["词缀碎片", "符文与雕文", "副本钥匙"];
 
-    private readonly LastEpochGameAdapter _adapter;
+    private readonly IEntityEditorsGameAdapter _adapter;
     private readonly ObservableCollection<MaterialRow> _rows = [];
     private readonly StackPanel _categories = new() { Orientation = Orientation.Horizontal };
     private readonly DataGrid _grid = new() { IsReadOnly = true, SelectionMode = DataGridSelectionMode.Single };
@@ -27,7 +27,7 @@ internal sealed class LastEpochMaterialsEditorPage : ModuleEditorPageBase
     private IReadOnlyList<AdapterEditorEntity> _allEntities = [];
     private string _selectedCategory = string.Empty;
 
-    public LastEpochMaterialsEditorPage(LastEpochGameAdapter adapter, GameEditorPageContext context) : base(context)
+    public LastEpochMaterialsEditorPage(IEntityEditorsGameAdapter adapter, GameEditorPageContext context) : base(context)
     {
         _adapter = adapter;
         _filter.TextChanged += (_, _) => BindRows();
@@ -113,19 +113,20 @@ internal sealed class LastEpochMaterialsEditorPage : ModuleEditorPageBase
     {
         var selectedEntityId = (_grid.SelectedItem as MaterialRow)?.Entity.EntityId;
         Context.Host.ReportStatus("正在读取 Last Epoch 资源…");
-        _allEntities = await Task.Run(
+        await ReadSnapshotAsync(
             () => _adapter.ReadEditorEntities(Context.Process, LastEpochGameAdapter.MaterialsEditorId),
-            Context.Lifetime);
-        ThrowIfExpired();
-
-        var availableCategories = CategoryOrder.Where(category =>
-                _allEntities.Any(entity => string.Equals(entity.Summary, category, StringComparison.Ordinal)))
-            .ToList();
-        if (!availableCategories.Contains(_selectedCategory, StringComparer.Ordinal))
-            _selectedCategory = availableCategories.FirstOrDefault() ?? string.Empty;
-        RebuildCategoryButtons(availableCategories);
-        BindRows(selectedEntityId);
-        Context.Host.ReportStatus($"已读取 {_allEntities.Count:N0} 项资源");
+            entities =>
+            {
+                _allEntities = entities;
+                var availableCategories = CategoryOrder.Where(category =>
+                        _allEntities.Any(entity => string.Equals(entity.Summary, category, StringComparison.Ordinal)))
+                    .ToList();
+                if (!availableCategories.Contains(_selectedCategory, StringComparer.Ordinal))
+                    _selectedCategory = availableCategories.FirstOrDefault() ?? string.Empty;
+                RebuildCategoryButtons(availableCategories);
+                BindRows(selectedEntityId);
+                Context.Host.ReportStatus($"已读取 {_allEntities.Count:N0} 项资源");
+            });
     }
 
     private void RebuildCategoryButtons(IReadOnlyList<string> categories)
@@ -183,10 +184,9 @@ internal sealed class LastEpochMaterialsEditorPage : ModuleEditorPageBase
             row.QuantityDisplay));
         if (value is null) return;
         Context.Host.ReportStatus($"正在修改 {row.DisplayName}…");
-        await Task.Run(() => _adapter.WriteField(
-            Context.Process,
+        await WriteFieldAsync(
             ModuleFieldKey.Create(LastEpochGameAdapter.MaterialsEditorId, row.Entity.EntityId, row.Field.Key),
-            value), Context.Lifetime);
+            value);
         await RefreshAsync();
         _grid.SelectedItem = _rows.FirstOrDefault(item => item.Entity.EntityId == row.Entity.EntityId);
     }

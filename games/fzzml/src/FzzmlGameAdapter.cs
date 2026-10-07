@@ -14,7 +14,7 @@ namespace GameValueEditor.Modules.Fzzml;
 public sealed partial class FzzmlGameAdapter :
     IInventoryGameAdapter,
     ICharacterAttributesGameAdapter,
-    IGameEditorPageFactoryProvider,
+    ICoordinatedGameEditorPageProvider,
     IGameCompatibilityDiagnosticsProvider
 {
     private const string InventoryEditorId = "game.fzzml.inventory";

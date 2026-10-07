@@ -9,7 +9,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>GameValueEditor.Modules.Fzzml</AssemblyName>
     <RootNamespace>GameValueEditor.Modules.Fzzml</RootNamespace>
-    <ModuleVersion Condition="'$(ModuleVersion)' == ''">2.1.3</ModuleVersion>
+    <ModuleVersion Condition="'$(ModuleVersion)' == ''">2.1.4</ModuleVersion>
     <Version>$(ModuleVersion)</Version>
   </PropertyGroup>
 

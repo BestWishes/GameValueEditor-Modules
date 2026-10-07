@@ -27,9 +27,9 @@ catalog.json
 
 ## 当前模块
 
-- [`game.fzzml` v2.1.3](games/fzzml/docs/README.md)
-- [`game.worldapart` v1.3.3](games/worldapart/docs/README.md)
-- [`game.last-epoch` v0.5.4](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
+- [`game.fzzml` v2.1.4](games/fzzml/docs/README.md)
+- [`game.worldapart` v1.3.4](games/worldapart/docs/README.md)
+- [`game.last-epoch` v0.5.5](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
 
 具体功能、线程、保存链路和实机证据只维护在对应游戏目录，不复制到主程序架构文档。
 
@@ -52,6 +52,10 @@ dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Mod
 ```
 
 新增游戏使用 `scripts/new-game-module.ps1`。脚手架要求真实三文件 SHA-256，生成模块自有 WPF 页面和只读兼容性诊断骨架；Host API 7 还要求页面使用宿主视觉资源键和间距常量。适配器默认拒绝所有构建，不会把占位实现误当成可用模块。
+
+上述新版本正式接入 Host API 8，要求主程序至少 v0.5.1，SDK 源码为 4.0.3。三个模块及脚手架的页面写入改走宿主实际字段协调桥接，避免与保存字段锁定互相覆盖；页面布局、主题、资源分类不变。旧 API 7 资产不覆盖，旧主程序仍可选择目录内兼容的保留版本。源码验证使用 `./scripts/validate-modules.ps1 -SkipCatalog`；真实页面回归使用 `dotnet run --project tests/GameValueEditor.Modules.PageTests -c Release`。契约见[扩展规范](docs/MODULE_EXTENSION_GUIDE.md)。
+
+API 8 同时提供整页快照：共享背包/人物/实体页及 Last Epoch 资源页只应用没有协调写入重叠的读取结果，过期数据/错误丢弃并提示重新刷新，不自动重试。宿主还修复停用模块后的解锁及旧式页面迟到读取。上述页面测试覆盖编译模块 DLL 中真实页面的读写桥接和快照行为；不据此声称证明游戏内效果。
 
 仓库不依赖 GitHub Actions。正式发布先完成源码检查并提交，再从干净提交使用 `-SkipCatalog` 生成最终 ZIP；包内 DLL 的 `ProductVersion` 提交号、带注释标签和远端分支必须一致。通过 GitHub API 创建不可变 Release并校验线上大小与 SHA-256 后，再用 `-CatalogOnly` 更新 `catalog.json`，并以 `./scripts/verify-release.ps1 -VerifyReleasedVersions` 对带目录的已发布版本做完整复验。目录为每个模块自动保留最多 3 个版本快照，最后才删除该模块第 4 个及更旧的 Release 资产并保留 Git 标签。该开关只允许当前版本已有同名正式标签，不改变新版本发布时的“必须恰好加 `0.0.1`”约束。
 

@@ -18,7 +18,7 @@ games/{短名}/
 
 新增游戏不修改主程序、中央解决方案或中央发布脚本。建议使用 `scripts/new-game-module.ps1` 创建安全失败的初始目录。
 
-## Host API 7
+## Host API 8（主程序 v0.5.1 起）
 
 公共契约位于 `sdk/GameValueEditor.ModuleSdk`。模块 ZIP 只包含模块 DLL 和 `module.json`，不能携带第二份 SDK 或宿主程序集。
 
@@ -27,6 +27,9 @@ games/{短名}/
 - `ICharacterAttributesGameAdapter`：标准人物属性能力。
 - `IEntityEditorsGameAdapter`：装备、资源、进度等实体数字字段能力。
 - `IGameEditorPageFactoryProvider`：API 6 起必需，按稳定编辑器 ID 创建模块自己的 `IGameEditorPage`。
+- `ICoordinatedGameEditorPageProvider`：API 8 必需，承诺所有页面字段写入使用宿主协调桥接，加载器核验此标记。
+- `IGameEditorFieldOperations`：通过 `context.Host` 获取的新增能力，页面调用 `WriteFieldAsync(稳定字段键, 目标显示值)`，不能直接调用适配器写入绕过保存别名和锁定协调。页面读取/布局仍由模块负责，模块的构建、范围、线程、刷新、保存与真实回读规则不变。
+- `IGameEditorSnapshotOperations`：API 8 同时提供 `ReadSnapshotAsync<T>(读取回调, 应用回调)`；读取回调在后台执行，应用回调在原 Dispatcher 上仅同步更新页面数据/选择/完成提示，不等待、不访问游戏、不保存宿主资料。宿主按运行范围和模块写入修订原子核验并应用，相关写入重叠时抛出 `GameEditorSnapshotChangedException`；提示重新刷新、不自动重试、不把迟到错误当成游戏错误。缺少此能力的新源码页面明确要求更新主程序，不回退为无协调读取。
 - `IGameEditorHostServices`：宿主提供的通用值输入、错误提示、状态和保存语义字段流程。
 - `ModuleVisualResources`：API 7 提供宿主主题资源键与间距常量。
 - `IGameCompatibilityDiagnosticsProvider`：API 5 必需，返回游戏专属的只读兼容检查结果。
@@ -36,6 +39,12 @@ games/{短名}/
 模块决定页面清单、稳定 ID、名称、顺序、说明、完整 WPF 视觉树、页面 ViewModel、筛选和操作流程。可以使用模块内 XAML、`UserControl` 或纯代码页面，也可以选择编译进本模块程序集的共享源码控件；这些都不构成宿主模板。宿主只管理导航容器、主题、生命周期、通用弹框、保存字段和兼容性报告，不读取页面内部控件或按 ID/类型猜布局。官方 API 7 模块必须使用 `ModuleVisualResources` 与宿主控件样式，不能写死颜色、替换应用级资源字典、建立独立字体体系或创建自己的窗口/主题切换。
 
 页面应在首次 `Loaded` 时读取数据，在 `Dispose()` 中解绑事件和释放状态，并在每次异步返回后检查 `GameEditorPageContext.Lifetime`。API 6 及以上 WPF 模块从影子副本加载；WPF 内部类型缓存使加载上下文保留到进程退出，但安装源包必须始终可删除，旧影子副本由下次启动清理。更新或回退这类已加载模块后，宿主只停用目标模块并等待用户重启，禁止在同一进程强行加载新旧两个版本。
+
+宿主桥接绑定页面的原进程、构建、适配器和生命周期，并与保存字段/快捷入口共用按实际语义目标的 FIFO 队列，后台锁定只使用空闲目标。桥接成功后同步保存别名当前值及未被显式改变的锁定目标；浏览历史版本不会把结果写进历史资料。旧宿主没有 API 8 能力时新模块拒绝加载，页面也不能回退为直接写入。旧 API 6/7 页面包在新宿主仍可加载，但字段锁定明确暂停，不声称旧包已经具备新能力。已经进入的同步写入不能靠取消 Token 撤销。
+
+API 8 的首个正式宿主为 v0.5.1，两仓 SDK 源码版本 4.0.3，CLR AssemblyVersion 保持 2.0.0.0。本次 WorldApart 1.3.4、Fzzml 2.1.4、Last Epoch 0.5.5 清单均明确要求 `hostApiVersion: 8` 与 `minimumHostVersion: 0.5.1`，两项门槛同时检查。发行号独立，稳定 ID 与精确游戏指纹不变；资产核验后才更新目录，旧 API 7 版本快照保持原声明。源码检查可用 `-SkipCatalog`，不据此放行正式发布。回退到旧宿主前必须由用户手动回退所需 API 8 模块，不自动回退。
+
+共享背包/人物/实体页与 Last Epoch 资源页均接入整页快照，布局和资源分类不变。快照只识别宿主协调的模块写入（含真正写入的后台锁定），不声称阻止游戏自然变化、未知原生地址写入或旧 API 6/7 包的直接读取。旧不可变包仍可加载，能力和锁定降级边界不变。
 
 兼容性诊断只能读取进程、构建和入口状态，不能写内存、调用游戏刷新/保存，也不能返回本机路径、用户名、PID、内存地址或存档内容。每个结果应给出稳定检查名、`Information`/`Passed`/`Warning`/`Failed` 状态和可直接给维护者阅读的结论；宿主会再次脱敏并隔离提供器异常。
 
@@ -56,6 +65,8 @@ games/{短名}/
 - 公开目录的所有重复元数据、贡献者、URL 和源码清单完全一致。
 
 宿主加载 DLL 时还会核对程序集与清单的模块显示名，以及编辑器 ID、名称、顺序和 `SessionOnly`。Host API 6 起 `editors` 不含 `kind`，程序集中的兼容描述统一使用 `GameEditorKind.Custom`；页面工厂必须能为每个编辑器创建非空页面。API 5 起仍必须提供只读兼容性诊断，API 7 起还会执行官方模块视觉规则检查。
+
+无真实游戏的页面回归：`dotnet run --project tests/GameValueEditor.Modules.PageTests -c Release`，实际实例化编译模块中的背包/人物/实体/Last Epoch 资源页面，用模拟适配器和宿主检验正常写入、输入取消、失效、错误及缺少桥接能力；模拟适配器的直接写入必须保持零次。该验证不等于游戏内实际效果重新验收。
 
 ## 构建与支持边界
 

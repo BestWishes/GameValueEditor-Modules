@@ -57,7 +57,7 @@ foreach ($path in @($gameRoot, $buildDir, $packageDir, $distDir, $archivePath)) 
 
 $contributorsPath = Join-Path $gameRoot "contributors.generated.json"
 $contributorsDocument = Get-Content -LiteralPath $contributorsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($manifest.version -ne $Version -or $manifest.hostApiVersion -notin @(2, 3, 4, 5, 6, 7) -or
+if ($manifest.version -ne $Version -or $manifest.hostApiVersion -notin @(2, 3, 4, 5, 6, 7, 8) -or
     [string]::IsNullOrWhiteSpace([string]$manifest.minimumHostVersion)) {
     throw "module.json version or Host API does not match the requested package."
 }
@@ -134,6 +134,13 @@ if (-not $SkipCatalog) {
             4 { '0.4.1' }
             6 { '0.4.3' }
             7 { '0.4.4' }
+            8 {
+                if ($entry.PSObject.Properties.Name -notcontains 'minimumHostVersion' -or
+                    [string]::IsNullOrWhiteSpace([string]$entry.minimumHostVersion)) {
+                    throw 'Published API 8 snapshots must declare their actual minimumHostVersion.'
+                }
+                [string]$entry.minimumHostVersion
+            }
             default { throw "Cannot derive minimumHostVersion for published Host API $($entry.hostApiVersion)." }
         }
         $legacyMaximumHostVersion = if ($entry.PSObject.Properties.Name -contains 'maximumHostVersion') {

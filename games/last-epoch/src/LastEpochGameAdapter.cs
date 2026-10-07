@@ -63,7 +63,7 @@ public sealed class LastEpochGameAdapter :
     ICharacterAttributesGameAdapter,
     IEntityEditorsGameAdapter,
     IGameVersionMetadataProvider,
-    IGameEditorPageFactoryProvider,
+    ICoordinatedGameEditorPageProvider,
     IGameCompatibilityDiagnosticsProvider,
     IGameEditorFieldPolicyProvider
 {
