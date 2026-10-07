@@ -57,6 +57,8 @@ dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Mod
 
 API 8 同时提供整页快照：共享背包/人物/实体页及 Last Epoch 资源页只应用没有协调写入重叠的读取结果，过期数据/错误丢弃并提示重新刷新，不自动重试。宿主还修复停用模块后的解锁及旧式页面迟到读取。上述页面测试覆盖编译模块 DLL 中真实页面的读写桥接和快照行为；不据此声称证明游戏内效果。
 
+配套版本、最低主程序、正式资产大小/摘要及复核边界见[本次集成发布记录](docs/API8_RELEASE_INTEGRATION.md)。
+
 仓库不依赖 GitHub Actions。正式发布先完成源码检查并提交，再从干净提交使用 `-SkipCatalog` 生成最终 ZIP；包内 DLL 的 `ProductVersion` 提交号、带注释标签和远端分支必须一致。通过 GitHub API 创建不可变 Release并校验线上大小与 SHA-256 后，再用 `-CatalogOnly` 更新 `catalog.json`，并以 `./scripts/verify-release.ps1 -VerifyReleasedVersions` 对带目录的已发布版本做完整复验。目录为每个模块自动保留最多 3 个版本快照，最后才删除该模块第 4 个及更旧的 Release 资产并保留 Git 标签。该开关只允许当前版本已有同名正式标签，不改变新版本发布时的“必须恰好加 `0.0.1`”约束。
 
 主程序版本和每个模块版本独立递增，无需编号对应；兼容关系由每个发布快照的 Host API、最低/最高主程序版本和游戏构建共同确定。主程序与模块回退都是用户显式操作，不提供自动回退。
