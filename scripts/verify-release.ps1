@@ -12,6 +12,8 @@ if ($SkipCatalog -and $VerifyReleasedVersions) {
 }
 
 & (Join-Path $repoRoot "scripts\test-release-retention.ps1")
+& (Join-Path $repoRoot "scripts\test-module-catalog-properties.ps1")
+& (Join-Path $repoRoot "scripts\test-package-build-constraints.ps1")
 if ([string]::IsNullOrWhiteSpace($HostRepository)) {
     $HostRepository = Join-Path (Split-Path $repoRoot -Parent) "GameValueEditor"
 }
