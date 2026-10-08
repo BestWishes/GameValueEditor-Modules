@@ -1,0 +1,31 @@
+{
+  "id": "game.play-again-expedition",
+  "version": "0.0.6",
+  "displayName": "再刷一把：远征专属修改模块",
+  "gameDisplayName": "再刷一把：远征",
+  "description": "材料、大转盘、掉落三个独立页面；直接接入正常启动的原游戏，按当前运行接口定位，无需启动参数或重开。",
+  "assemblyFile": "GameValueEditor.Modules.PlayAgainExpedition.dll",
+  "hostApiVersion": 8,
+  "minimumHostVersion": "0.5.2",
+  "supportsUnlistedBuildValidation": true,
+  "processNames": ["PlayAgainExpedition", "ZsebExpedition"],
+  "compatibleBuilds": [
+    {
+      "executableSha256": "A79F66A6F236B237E25C00DD9F8BA763F9BAD13E16CD3269DE2348EA7FFEF396",
+      "gameAssemblySha256": "",
+      "metadataSha256": "",
+      "packageSha256": "5A4F4E414BD06FC248CFE2AD30E7D9EE3B110968DB888FDB733CD57F78A6B294"
+    },
+    {
+      "executableSha256": "C7F68B5031E3022AE1A8DFD3AB8578FD57F7EE13097DF35ADD388CCC4DD0C540",
+      "gameAssemblySha256": "",
+      "metadataSha256": "",
+      "packageSha256": "5A4F4E414BD06FC248CFE2AD30E7D9EE3B110968DB888FDB733CD57F78A6B294"
+    }
+  ],
+  "editors": [
+    { "id": "game.play-again-expedition.materials", "displayName": "材料", "order": 100, "sessionOnly": false },
+    { "id": "game.play-again-expedition.lucky-wheel", "displayName": "大转盘", "order": 200, "sessionOnly": true },
+    { "id": "game.play-again-expedition.drops", "displayName": "掉落", "order": 300, "sessionOnly": true }
+  ]
+}

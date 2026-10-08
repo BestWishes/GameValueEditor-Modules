@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>GameValueEditor.Modules.PlayAgainExpedition</AssemblyName>
+    <RootNamespace>GameValueEditor.Modules.PlayAgainExpedition</RootNamespace>
+    <ModuleVersion Condition="'$(ModuleVersion)' == ''">0.0.6</ModuleVersion>
+    <Version>$(ModuleVersion)</Version>
+    <NodeExecutable Condition="'$(NodeExecutable)' == ''">node</NodeExecutable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../sdk/GameValueEditor.ModuleSdk/GameValueEditor.ModuleSdk.csproj" Private="false" />
+    <EmbeddedResource Include="$(IntermediateOutputPath)ExpeditionRequests.json" LogicalName="Expedition.Requests.json" />
+    <None Update="module.json" CopyToOutputDirectory="PreserveNewest" />
+    <InternalsVisibleTo Include="GameValueEditor.Modules.PlayAgainExpedition.Tests" />
+  </ItemGroup>
+  <Target Name="GenerateFixedExpeditionRequests" BeforeTargets="PrepareResources">
+    <Exec Command="&quot;$(NodeExecutable)&quot; &quot;$(MSBuildProjectDirectory)/tools/build-requests.cjs&quot; &quot;$(MSBuildProjectDirectory)/$(IntermediateOutputPath)ExpeditionRequests.json&quot;" />
+  </Target>
+</Project>

@@ -39,9 +39,20 @@
         "required": ["executableSha256", "gameAssemblySha256", "metadataSha256"],
         "properties": {
           "executableSha256": { "$ref": "#/$defs/sha256" },
-          "gameAssemblySha256": { "$ref": "#/$defs/sha256" },
-          "metadataSha256": { "$ref": "#/$defs/sha256" }
-        }
+          "gameAssemblySha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "const": "" }] },
+          "metadataSha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "const": "" }] },
+          "packageSha256": { "$ref": "#/$defs/sha256" }
+        },
+        "allOf": [{
+          "if": { "anyOf": [
+            { "properties": { "gameAssemblySha256": { "const": "" } } },
+            { "properties": { "metadataSha256": { "const": "" } } }
+          ] },
+          "then": {
+            "required": ["packageSha256"],
+            "properties": { "gameAssemblySha256": { "const": "" }, "metadataSha256": { "const": "" } }
+          }
+        }]
       }
     },
     "editors": {

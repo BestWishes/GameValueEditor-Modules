@@ -59,25 +59,25 @@ internal sealed class LastEpochRuntime : IDisposable
     private const string GoldQuantityKey = "gold-quantity-percent";
     private const string GoldQuantityName = "金币倍率（%）";
 
-    private static readonly (string Id, string Name, string Group, ulong Offset)[] MaterialContainers =
+    private static readonly (string Id, string Name, string Group, string Field)[] MaterialContainers =
     [
-        ("rune-shattering", "符文·粉碎", "符文", 0x20),
-        ("rune-refinement", "符文·精炼", "符文", 0x28),
-        ("rune-removal", "符文·移除", "符文", 0x30),
-        ("rune-cleansing", "符文·净化", "符文", 0x38),
-        ("rune-shaping", "符文·塑形", "符文", 0x40),
-        ("glyph-guardian", "雕文·守护", "雕文", 0x48),
-        ("glyph-stability", "雕文·稳定", "雕文", 0x50),
-        ("glyph-order", "雕文·秩序", "雕文", 0x58),
-        ("glyph-greater-hope", "雕文·绝望", "雕文", 0x60),
-        ("rune-ascendance", "符文·升华", "符文", 0x68),
-        ("rune-eterra", "符文·伊泰拉", "符文", 0x70),
-        ("rune-envy", "符文·嫉妒", "符文", 0x78),
-        ("rune-weaving", "符文·编织", "符文", 0x80),
-        ("rune-havoc", "符文·浩劫", "符文", 0x88),
-        ("rune-redemption", "符文·救赎", "符文", 0x90),
-        ("rune-evolution", "符文·进化", "符文", 0x98),
-        ("rune-corruption", "符文·腐化", "符文", 0xA0)
+        ("rune-shattering", "符文·粉碎", "符文", "shattering"),
+        ("rune-refinement", "符文·精炼", "符文", "refinement"),
+        ("rune-removal", "符文·移除", "符文", "removal"),
+        ("rune-cleansing", "符文·净化", "符文", "cleansing"),
+        ("rune-shaping", "符文·塑形", "符文", "shaping"),
+        ("glyph-guardian", "雕文·守护", "雕文", "guardian"),
+        ("glyph-stability", "雕文·稳定", "雕文", "stability"),
+        ("glyph-order", "雕文·秩序", "雕文", "order"),
+        ("glyph-greater-hope", "雕文·绝望", "雕文", "greaterHope"),
+        ("rune-ascendance", "符文·升华", "符文", "ascendance"),
+        ("rune-eterra", "符文·伊泰拉", "符文", "eterra"),
+        ("rune-envy", "符文·嫉妒", "符文", "envy"),
+        ("rune-weaving", "符文·编织", "符文", "weaving"),
+        ("rune-havoc", "符文·浩劫", "符文", "havoc"),
+        ("rune-redemption", "符文·救赎", "符文", "redemption"),
+        ("rune-evolution", "符文·进化", "符文", "evolution"),
+        ("rune-corruption", "符文·腐化", "符文", "corruption")
     ];
 
     private readonly record struct ResourceDefinition(byte Type, byte SubType, string Name);
@@ -112,8 +112,8 @@ internal sealed class LastEpochRuntime : IDisposable
 
     public LastEpochRuntime(int processId)
     {
-        // Fixed layouts are usable only for a complete, approved build. Guard before any remote call/allocation.
-        LastEpochBuildGuard.EnsureVerifiedProcess(processId);
+        // Resolve game-specific layouts from the current runtime, not historical build hashes.
+        LastEpochBuildGuard.EnsureCurrentProcess(processId);
         _process = Process.GetProcessById(processId);
         _handle = new SafeFileHandle(OpenProcess(ProcessAccess, false, processId), true);
         if (_handle.IsInvalid)
@@ -154,71 +154,10 @@ internal sealed class LastEpochRuntime : IDisposable
 
     public void ValidateCompatibility()
     {
-        // Resolve symbols by IL2CPP semantic identity. A changed game build is accepted only
-        // when every root and native method needed by the module can still be located safely.
+        // Module connection only needs the character root. Individual editors resolve
+        // their own current types/fields/methods; a changed optional hook cannot veto the whole package.
         _ = ResolveStaticFieldInfo(string.Empty, "PlayerFinder", "localPlayerDataTracker");
-        _ = ResolveStaticFieldInfo(string.Empty, "PlayerFinder", "playerActorComponent");
-        _ = ResolveStaticFieldInfo(string.Empty, "PlayerFinder", "localTreeData");
-        _ = ResolveStaticFieldInfo(string.Empty, "PlayerFinder", "localItemContainersManager");
-        _ = ResolveStaticFieldInfo(string.Empty, "Localization", "_tableCache");
-        _ = ResolveStaticFieldInfo(string.Empty, "SpecialisedAbilityManager", "abilityLevelRequirements");
-        _ = ResolveNamedMethodRva(string.Empty, "ItemData", "SetForgingPotential", 1);
-        _ = ResolveNamedMethodRva(string.Empty, "ItemData", "RefreshIDAndValues", 0);
-        _ = ResolveNamedMethodRva(string.Empty, "ItemContainerEntry", "UpdateEntry", 0);
-        _ = ResolveNamedMethodRva(string.Empty, "ItemList", "get", 0);
-        _ = ResolveNamedMethodRva(string.Empty, "ItemList", "GetItemName", 2);
-        _ = ResolveNamedMethodRva("UnityEngine", "Application", "get_version", 0);
-        _ = ResolveNamedMethodRva("UnityEngine", "Application", "get_productName", 0);
-        _ = ResolveNamedMethodRva("UnityEngine", "Application", "get_buildGUID", 0);
-        _ = ResolveNamedMethodRva("UnityEngine", "Application", "get_unityVersion", 0);
-
         ValidateInstanceField("CharacterDataTracker", "charData");
-        ValidateInstanceField("CharacterDataTracker", "characterSlotId");
-        ValidateInstanceField("ItemContainersManager", "crafting");
-        ValidateInstanceField("ItemContainersManager/CraftingContainers", "main");
-        ValidateInstanceField("OneSlotItemContainer", "content");
-        ValidateInstanceField("ItemContainerEntry", "data");
-        ValidateInstanceField("ItemData", "individualID");
-        ValidateInstanceField("ItemData", "forgingPotential");
-        ValidateInstanceField("ItemData", "forgingPotentialType");
-        ValidateInstanceField("ItemData", "legendaryPotential");
-        ValidateInstanceField("ItemData", "weaversWill");
-        ValidateInstanceField("ItemData", "weaversTouch");
-        ValidateInstanceField("Actor", "stats");
-        ValidateInstanceField("Actor", "chargeManager");
-        ValidateInstanceField("Actor", "mutatorManager");
-        ValidateInstanceField("Actor", "healthPotion");
-        ValidateInstanceField("Stats", "stats");
-        ValidateInstanceField("BaseStats", "statsNeedToBeUpdatedNextFrame");
-        ValidateInstanceField("CharacterStats", "attributes");
-        ValidateInstanceField("CharacterStats", "expTracker");
-        ValidateInstanceField("ExperienceTracker", "<CurrentExperience>k__BackingField");
-        ValidateInstanceField("ExperienceTracker", "<NextLevelExperience>k__BackingField");
-        ValidateInstanceField("ExperienceTracker", "<CurrentLevel>k__BackingField");
-        ValidateInstanceField("HealthPotion", "baseDropChance");
-        ValidateInstanceField("HealthPotion", "dropChance");
-        ValidateInstanceField("HealthPotion", "increasedPotionDropRate");
-        ValidateInstanceField("AbilityStatsMutatorManager", "increasedCooldownRecoverySpeedForMovementSkills");
-        ValidateInstanceField("ChargeManager", "charges");
-        ValidateInstanceField("ChargeManager", "chargeRegen");
-        ValidateInstanceField("ChargeManager", "maxCharges");
-        ValidateInstanceField("ChargeManager", "abilities");
-        ValidateInstanceField("ChargeManager", "increasedRecoverySpeed");
-        ValidateInstanceField("Ability", "abilityName");
-        ValidateInstanceField("Ability", "playerAbilityID");
-        ValidateInstanceField("Ability", "chargesGainedPerSecond");
-        ValidateInstanceField("Ability", "traversalSkill");
-        _ = ResolveNamedMethodRva(string.Empty, "CharacterStats", "OnUpdateTick", 1);
-        _ = ResolveNamedMethodRva(string.Empty, "CharacterStats", "AddStatModifier", 6);
-        _ = ResolveNamedMethodRva(string.Empty, "BaseStats", "UpdateStats", 0);
-        _ = ResolveNamedMethodRva(string.Empty, "Stats", "GetTotalIncreased", 4);
-        _ = ResolveNamedMethodRva(string.Empty, "CharacterSheet", "UpdateSheet", 0);
-        _ = ResolveNamedMethodRva(string.Empty, "ExperienceTracker", "GainExp", 3);
-        _ = ResolveNamedMethodRva(string.Empty, "HealthPotion", "getDropChance", 0);
-        _ = ResolveNamedMethodRva(string.Empty, "HealthPotion", "updatePotionStats", 0);
-        _ = ResolveNamedMethodRva(string.Empty, "ItemDrop", "getItemDropChance", 1);
-        _ = ResolveItemDropHookSite();
-        _ = ResolveNamedMethodRva(string.Empty, "GroundItemManager", "dropGoldForPlayer", 4);
     }
 
     public LastEpochCooldownDiagnostics ReadCooldownDiagnostics()
@@ -260,12 +199,12 @@ internal sealed class LastEpochRuntime : IDisposable
         }
 
         var cooldownStats = ReadReferenceList(GetStatsList(stats), "人物实时统计")
-            .Where(stat => ReadByte(stat + 0x10) == 70)
+            .Where(stat => ReadByte(ObjectFieldAddress(stat, "property")) == 70)
             .Select(stat => new LastEpochCooldownStatDiagnostic(
-                ReadInt32(stat + 0x14),
-                ReadInt32(stat + 0x18),
-                ReadSingle(stat + 0x1C),
-                ReadSingle(stat + 0x20)))
+                ReadInt32(ObjectFieldAddress(stat, "tags")),
+                ReadInt32(ObjectFieldAddress(stat, "extraTag")),
+                ReadSingle(ObjectFieldAddress(stat, "addedValue")),
+                ReadSingle(ObjectFieldAddress(stat, "increasedValue"))))
             .ToList();
         var mutatorManager = ReadObjectReferenceField(actor, "mutatorManager");
         return new(
@@ -371,85 +310,59 @@ internal sealed class LastEpochRuntime : IDisposable
     {
         var tracker = GetTracker();
         var data = GetCharacterData();
-        var tree = RequirePlayerFinderRoot("localTreeData", "人物技能树");
         var name = ReadManagedString(ReadObjectReferenceField(data, "<CharacterName>k__BackingField"));
         var level = ReadInt32(ObjectFieldAddress(data, "<Level>k__BackingField"));
-        var passive = ReadObjectReferenceField(tree, "passiveTree");
-        var passivePoints = passive == 0
-            ? 0
-            : Math.Max(0, ReadUInt16(ObjectFieldAddress(passive, "pointsEarnt")) -
-                          SumAllocatedPoints(ReadObjectReferenceField(passive, "nodes")));
-        var skillTrees = ReadReferenceList(ReadObjectReferenceField(tree, "specialisedSkillTrees"), "专精技能树");
-        var specialisationPoints = skillTrees.Count == 0
-            ? 0
-            : skillTrees.Select(item => Math.Max(0,
-                ReadByte(ObjectFieldAddress(item, "level")) -
-                SumAllocatedPoints(ReadObjectReferenceField(item, "nodes")))).Min();
         var id = $"{ReadInt32(ObjectFieldAddress(tracker, "characterSlotId"))}:{name}";
-        var attributes = new List<AdapterCharacterAttribute>
+        var tree = new Lazy<ulong>(() => RequirePlayerFinderRoot("localTreeData", "人物技能树"));
+        var actor = new Lazy<ulong>(GetPlayerActor);
+        var stats = new Lazy<ulong>(() => GetPlayerStats(actor.Value));
+        var attributes = new List<AdapterCharacterAttribute>();
+        void Add(string key, string label, Func<int> read, string status)
         {
-            new("skill-points", "剩余天赋点", passivePoints, passivePoints, 0, true, "写入角色存档"),
-            new("specialisation-points", "剩余技能点", specialisationPoints, specialisationPoints, 0,
-                skillTrees.Count > 0, skillTrees.Count > 0 ? "按技能经验等级写入角色存档" : "当前没有已专精技能")
-        };
-        var actor = GetPlayerActor();
-        var stats = GetPlayerStats(actor);
-        foreach (var core in CoreAttributes)
-        {
-            var value = ReadCoreAttributeValue(stats, core.Attribute, core.Property);
-            attributes.Add(new(
-                core.Key,
-                core.Name,
-                value,
-                value,
-                0,
-                true,
-                "仅当前游戏运行有效；重新进入角色后由游戏恢复"));
-        }
-        foreach (var increased in IncreasedStats)
-        {
-            var value = increased.Property switch
+            try
             {
-                70 => ReadCooldownRecoveryPercent(actor),
-                116 => ReadAreaEffectPercent(stats),
-                47 => ReadPotionDropRatePercent(actor),
-                104 => ReadItemDropRatePercent(),
-                _ => ReadIncreasedStatPercent(stats, increased.Property, increased.Tags)
-            };
-            attributes.Add(new(
-                increased.Key,
-                increased.Name,
-                value,
-                value,
-                0,
-                true,
-                increased.Key == "area-effect-percent"
-                    ? "仅当前游戏运行有效；同时放大技能范围与部分技能视觉特效"
-                    : "仅当前游戏运行有效；按百分比填写"));
+                var value = read();
+                attributes.Add(new(key, label, value, value, 0, true, status));
+            }
+            catch (Exception error) when (error is InvalidOperationException or InvalidDataException or Win32Exception)
+            {
+                // A changed optional feature must not erase every other character field.
+                attributes.Add(new(key, label, 0, 0, 0, false, "当前项目不可用：" + error.Message));
+            }
         }
-        var goldQuantity = ReadGoldQuantityPercent();
-        attributes.Add(new(
-            GoldQuantityKey,
-            GoldQuantityName,
-            goldQuantity,
-            goldQuantity,
-            0,
-            true,
-            "仅当前游戏运行有效；100% 表示金币堆数量变为 2 倍"));
-        var movementCooldown = ReadMovementCooldownPercent(actor);
-        attributes.Add(new(
-            MovementCooldownKey,
-            MovementCooldownName,
-            movementCooldown,
-            movementCooldown,
-            0,
-            true,
-            "仅当前游戏运行有效；按百分比填写"));
-        return new(
-            id,
-            string.IsNullOrWhiteSpace(name) ? "当前离线角色" : name,
-            level,
-            attributes);
+        Add("skill-points", "剩余天赋点", () =>
+        {
+            var passive = ReadObjectReferenceField(tree.Value, "passiveTree");
+            if (passive == 0) throw new InvalidOperationException("天赋树尚未加载。");
+            return Math.Max(0, ReadUInt16(ObjectFieldAddress(passive, "pointsEarnt")) -
+                SumAllocatedPoints(ReadObjectReferenceField(passive, "nodes")));
+        }, "写入角色存档");
+        Add("specialisation-points", "剩余技能点", () =>
+        {
+            var skills = ReadReferenceList(ReadObjectReferenceField(tree.Value, "specialisedSkillTrees"), "专精技能树");
+            if (skills.Count == 0) throw new InvalidOperationException("当前没有已专精技能。");
+            return skills.Select(item => Math.Max(0, ReadByte(ObjectFieldAddress(item, "level")) -
+                SumAllocatedPoints(ReadObjectReferenceField(item, "nodes")))).Min();
+        }, "按技能经验等级写入角色存档");
+        foreach (var core in CoreAttributes)
+            Add(core.Key, core.Name, () => ReadCoreAttributeValue(stats.Value, core.Attribute, core.Property),
+                "仅当前游戏运行有效；重新进入角色后由游戏恢复");
+        foreach (var increased in IncreasedStats)
+            Add(increased.Key, increased.Name, () => increased.Property switch
+            {
+                70 => ReadCooldownRecoveryPercent(actor.Value),
+                116 => ReadAreaEffectPercent(stats.Value),
+                47 => ReadPotionDropRatePercent(actor.Value),
+                104 => ReadItemDropRatePercent(),
+                _ => ReadIncreasedStatPercent(stats.Value, increased.Property, increased.Tags)
+            }, increased.Key == "area-effect-percent"
+                ? "仅当前游戏运行有效；同时放大技能范围与部分技能视觉特效"
+                : "仅当前游戏运行有效；按百分比填写");
+        Add(GoldQuantityKey, GoldQuantityName, ReadGoldQuantityPercent,
+            "仅当前游戏运行有效；100% 表示金币堆数量变为 2 倍");
+        Add(MovementCooldownKey, MovementCooldownName, () => ReadMovementCooldownPercent(actor.Value),
+            "仅当前游戏运行有效；按百分比填写");
+        return new(id, string.IsNullOrWhiteSpace(name) ? "当前离线角色" : name, level, attributes);
     }
 
     public void WriteCharacterAttribute(string characterId, string key, int target)
@@ -459,6 +372,7 @@ internal sealed class LastEpochRuntime : IDisposable
             throw new InvalidOperationException("当前角色已经变化，请刷新后重试。");
         var currentAttribute = current.Attributes.SingleOrDefault(item => item.Key == key)
             ?? throw new InvalidOperationException($"未知人物字段 {key}。");
+        if (!currentAttribute.CanWrite) throw new InvalidOperationException(currentAttribute.Status);
         if (currentAttribute.RawValue == target)
         {
             if (key == "experience-gain-percent" && target != 0) EnsureExperienceGainHook();
@@ -611,30 +525,30 @@ internal sealed class LastEpochRuntime : IDisposable
     public IReadOnlyList<AdapterEditorEntity> ReadMaterials()
     {
         var stash = GetStash();
-        var counts = ReadShardCounts(ReadUInt64(stash + 0xA8));
+        var counts = ReadShardCounts(ReadUInt64(ObjectFieldAddress(stash, "<SavedShards>k__BackingField")));
         var entities = new List<AdapterEditorEntity>();
         var affixList = ResolveStaticFieldObject("LE.AssetManagement", "GlobalAssets", "_storage_MasterAffixesList");
         if (affixList == 0) throw new InvalidOperationException("词缀碎片定义尚未加载。");
-        var allAffixes = ReadReferenceList(ReadUInt64(affixList + 0x78), "词缀碎片定义");
+        var allAffixes = ReadReferenceList(ReadUInt64(ObjectFieldAddress(affixList, "allAffixes")), "词缀碎片定义");
         if (allAffixes.Count == 0)
         {
-            allAffixes = ReadReferenceArray(ReadUInt64(affixList + 0x58), "单属性词缀定义")
-                .Concat(ReadReferenceArray(ReadUInt64(affixList + 0x60), "多属性词缀定义"))
+            allAffixes = ReadReferenceArray(ReadUInt64(ObjectFieldAddress(affixList, "singleAffixes")), "单属性词缀定义")
+                .Concat(ReadReferenceArray(ReadUInt64(ObjectFieldAddress(affixList, "multiAffixes")), "多属性词缀定义"))
                 .ToList();
         }
         foreach (var affix in allAffixes)
         {
             if (!AffixHasShard(affix)) continue;
-            var id = ReadInt32(affix + 0x44);
+            var id = ReadInt32(ObjectFieldAddress(affix, "affixId"));
             var name = ReadLocalizedValue($"Item_Affix_{id}_DisplayName");
-            if (string.IsNullOrWhiteSpace(name)) name = ReadManagedString(ReadUInt64(affix + 0x20));
-            if (string.IsNullOrWhiteSpace(name)) name = ReadManagedString(ReadUInt64(affix + 0x18));
+            if (string.IsNullOrWhiteSpace(name)) name = ReadManagedString(ReadUInt64(ObjectFieldAddress(affix, "affixDisplayName")));
+            if (string.IsNullOrWhiteSpace(name)) name = ReadManagedString(ReadUInt64(ObjectFieldAddress(affix, "affixName")));
             if (string.IsNullOrWhiteSpace(name)) name = $"词缀碎片 {id}";
             counts.TryGetValue(id, out var quantity);
             entities.Add(MaterialEntity($"shard:{id}", name, "词缀碎片", quantity));
         }
 
-        var materialCounts = ReadLocationPairCounts(ReadUInt64(stash + 0xB8), "已保存符文与雕文");
+        var materialCounts = ReadLocationPairCounts(ReadUInt64(ObjectFieldAddress(stash, "<MaterialsList>k__BackingField")), "已保存符文与雕文");
         foreach (var definition in ReadMaterialDefinitions())
         {
             materialCounts.TryGetValue((definition.Type, definition.SubType), out var saved);
@@ -645,7 +559,7 @@ internal sealed class LastEpochRuntime : IDisposable
                 saved.Quantity));
         }
 
-        var keyCounts = ReadLocationPairCounts(ReadUInt64(stash + 0xC8), "已保存副本钥匙");
+        var keyCounts = ReadLocationPairCounts(ReadUInt64(ObjectFieldAddress(stash, "<KeysList>k__BackingField")), "已保存副本钥匙");
         foreach (var definition in ReadKeyDefinitions())
         {
             keyCounts.TryGetValue((definition.Type, definition.SubType), out var saved);
@@ -668,22 +582,22 @@ internal sealed class LastEpochRuntime : IDisposable
         {
             if (!int.TryParse(entityId.AsSpan(6), NumberStyles.Integer, CultureInfo.InvariantCulture, out var shardId))
                 throw new InvalidOperationException("词缀碎片身份无效。");
-            var list = ReadUInt64(stash + 0xA8);
+            var list = ReadUInt64(ObjectFieldAddress(stash, "<SavedShards>k__BackingField"));
             if (list == 0) throw new InvalidOperationException("词缀碎片列表尚未加载。");
             var shard = ReadReferenceList(list, "已持有词缀碎片")
-                .FirstOrDefault(item => ReadInt32(item + 0x10) == shardId);
+                .FirstOrDefault(item => ReadInt32(ObjectFieldAddress(item, "<ShardType>k__BackingField")) == shardId);
             if (shard == 0)
             {
                 if (target == 0) return ReadMaterials().Single(item => item.EntityId == entityId);
                 shard = CreateManagedListElement(list);
-                Write(shard + 0x10, BitConverter.GetBytes(shardId));
+                Write(ObjectFieldAddress(shard, "<ShardType>k__BackingField"), BitConverter.GetBytes(shardId));
                 AppendManagedReference(list, shard);
             }
-            Write(shard + 0x14, BitConverter.GetBytes(checked((int)target)));
+            Write(ObjectFieldAddress(shard, "<Quantity>k__BackingField"), BitConverter.GetBytes(checked((int)target)));
         }
         else if (TryParseLocationEntity(entityId, out var isKey, out var itemType, out var subType))
         {
-            var list = ReadUInt64(stash + (isKey ? 0xC8UL : 0xB8UL));
+            var list = ReadUInt64(ObjectFieldAddress(stash, isKey ? "<KeysList>k__BackingField" : "<MaterialsList>k__BackingField"));
             if (list == 0) throw new InvalidOperationException(isKey ? "副本钥匙列表尚未加载。" : "符文与雕文列表尚未加载。");
             var saved = FindLocationPair(list, itemType, subType);
             if (saved == 0)
@@ -693,9 +607,9 @@ internal sealed class LastEpochRuntime : IDisposable
             }
             else
             {
-                Write(saved + 0x2C, BitConverter.GetBytes(checked((int)target)));
+                Write(ObjectFieldAddress(saved, "<Quantity>k__BackingField"), BitConverter.GetBytes(checked((int)target)));
             }
-            if (isKey && target > 0) Write(stash + 0x118, [1]);
+            if (isKey && target > 0) Write(ObjectFieldAddress(stash, "<KeysTabUnlocked>k__BackingField"), [1]);
             liveUpdated = SyncLiveResourceQuantity(isKey, itemType, subType, checked((int)target));
         }
         else
@@ -716,16 +630,17 @@ internal sealed class LastEpochRuntime : IDisposable
     {
         if (isKey)
         {
-            var keys = ReadUInt64(GetActiveMaterialStash() + 0x88);
+            var keys = ReadUInt64(ObjectFieldAddress(GetActiveMaterialStash(), "<Keys>k__BackingField"));
             if (keys == 0) return false;
-            var content = ReadUInt64(keys + 0x28);
+            var content = ReadUInt64(ObjectFieldAddress(keys, "content"));
             foreach (var entry in ReadReferenceList(content, "当前副本钥匙容器"))
             {
-                var data = ReadUInt64(entry + 0x10);
+                var data = ReadUInt64(ObjectFieldAddress(entry, "data"));
                 if (data == 0 || ReadByte(ObjectFieldAddress(data, "itemType")) != itemType ||
                     ReadUInt16(ObjectFieldAddress(data, "subType")) != subType) continue;
-                Write(entry + 0x28, BitConverter.GetBytes(target));
-                Write(keys + 0x14, [1, 1]);
+                Write(ObjectFieldAddress(entry, "quantity"), BitConverter.GetBytes(target));
+                Write(ObjectFieldAddress(keys, "<DirtyForSaving>k__BackingField"), [1]);
+                Write(ObjectFieldAddress(keys, "<DirtyForSync>k__BackingField"), [1]);
                 return true;
             }
             return false;
@@ -734,15 +649,15 @@ internal sealed class LastEpochRuntime : IDisposable
         var materials = GetMaterialContainers();
         foreach (var definition in MaterialContainers)
         {
-            var container = ReadUInt64(materials + definition.Offset);
-            if (container == 0 || ReadInt32(container + 0x78) != subType) continue;
-            var allowedTypes = ReadUInt64(container + 0x30);
+            var container = ReadObjectReferenceField(materials, definition.Field);
+            if (container == 0 || ReadInt32(ObjectFieldAddress(container, "allowedSubID")) != subType) continue;
+            var allowedTypes = ReadUInt64(ObjectFieldAddress(container, "allowedBaseType"));
             if (allowedTypes == 0 || ReadInt32(allowedTypes + 0x18) == 0 ||
                 ReadInt32(allowedTypes + 0x20) != itemType) continue;
-            var entry = ReadUInt64(container + 0x28);
+            var entry = ReadUInt64(ObjectFieldAddress(container, "content"));
             if (entry == 0) return false;
-            Write(entry + 0x28, BitConverter.GetBytes(target));
-            Write(container + 0x14, [1]);
+            Write(ObjectFieldAddress(entry, "quantity"), BitConverter.GetBytes(target));
+            Write(ObjectFieldAddress(container, "<DirtyForSaving>k__BackingField"), [1]);
             return true;
         }
         return false;
@@ -760,14 +675,14 @@ internal sealed class LastEpochRuntime : IDisposable
 
         if (isKey)
         {
-            var keys = ReadUInt64(GetActiveMaterialStash() + 0x88);
-            var content = keys == 0 ? 0 : ReadUInt64(keys + 0x28);
+            var keys = ReadUInt64(ObjectFieldAddress(GetActiveMaterialStash(), "<Keys>k__BackingField"));
+            var content = keys == 0 ? 0 : ReadUInt64(ObjectFieldAddress(keys, "content"));
             foreach (var entry in ReadReferenceList(content, "当前副本钥匙容器"))
             {
-                var data = ReadUInt64(entry + 0x10);
+                var data = ReadUInt64(ObjectFieldAddress(entry, "data"));
                 if (data == 0 || ReadByte(ObjectFieldAddress(data, "itemType")) != itemType ||
                     ReadUInt16(ObjectFieldAddress(data, "subType")) != subType) continue;
-                quantity = Math.Max(0, ReadInt32(entry + 0x28));
+                quantity = Math.Max(0, ReadInt32(ObjectFieldAddress(entry, "quantity")));
                 return true;
             }
             reason = "当前资源页尚未创建该钥匙槽位";
@@ -777,18 +692,18 @@ internal sealed class LastEpochRuntime : IDisposable
         var materials = GetMaterialContainers();
         foreach (var definition in MaterialContainers)
         {
-            var container = ReadUInt64(materials + definition.Offset);
-            if (container == 0 || ReadInt32(container + 0x78) != subType) continue;
-            var allowedTypes = ReadUInt64(container + 0x30);
+            var container = ReadObjectReferenceField(materials, definition.Field);
+            if (container == 0 || ReadInt32(ObjectFieldAddress(container, "allowedSubID")) != subType) continue;
+            var allowedTypes = ReadUInt64(ObjectFieldAddress(container, "allowedBaseType"));
             if (allowedTypes == 0 || ReadInt32(allowedTypes + 0x18) == 0 ||
                 ReadInt32(allowedTypes + 0x20) != itemType) continue;
-            var entry = ReadUInt64(container + 0x28);
+            var entry = ReadUInt64(ObjectFieldAddress(container, "content"));
             if (entry == 0)
             {
                 reason = "当前资源页尚未创建该材料槽位";
                 return false;
             }
-            quantity = Math.Max(0, ReadInt32(entry + 0x28));
+            quantity = Math.Max(0, ReadInt32(ObjectFieldAddress(entry, "quantity")));
             return true;
         }
         reason = "当前资源页没有匹配容器";
@@ -801,23 +716,23 @@ internal sealed class LastEpochRuntime : IDisposable
         var result = new List<AdapterEditorEntity>
         {
             new("global", "角色异界总览", "不创建或解锁异界内容",
-                [new("max-corruption", "最高腐化", ReadInt32(data + 0x158), 0, 1_000_000)])
+                [new("max-corruption", "最高腐化", ReadInt32(ObjectFieldAddress(data, "<MaxCorruption>k__BackingField")), 0, 1_000_000)])
         };
-        foreach (var run in ReadReferenceList(ReadUInt64(data + 0x150), "异界时间线"))
+        foreach (var run in ReadReferenceList(ReadUInt64(ObjectFieldAddress(data, "<MonolithRuns>k__BackingField")), "异界时间线"))
         {
-            var timeline = ReadInt32(run + 0x10);
-            var difficulty = ReadInt32(run + 0x14);
-            var web = ReadUInt64(run + 0x28);
+            var timeline = ReadInt32(ObjectFieldAddress(run, "<TimelineID>k__BackingField"));
+            var difficulty = ReadInt32(ObjectFieldAddress(run, "<DifficultyIndex>k__BackingField"));
+            var web = ReadUInt64(ObjectFieldAddress(run, "<SavedEchoWeb>k__BackingField"));
             if (web == 0) continue;
             result.Add(new(
                 $"timeline:{timeline}:{difficulty}",
                 $"时间线 {timeline} · 难度 {difficulty}",
                 difficulty > 0 ? "强化时间线" : "普通时间线",
                 [
-                    new("corruption", "腐化值", ReadInt32(web + 0x14), 0, 1_000_000),
-                    new("stability", "稳定度", ReadInt32(run + 0x30), 0, 1_000_000),
-                    new("depth", "深度", ReadInt32(run + 0x18), 0, 1_000_000),
-                    new("gaze", "奥罗比斯凝视", ReadInt32(web + 0x1C), 0, 1_000_000)
+                    new("corruption", "腐化值", ReadInt32(ObjectFieldAddress(web, "<Corruption>k__BackingField")), 0, 1_000_000),
+                    new("stability", "稳定度", ReadInt32(ObjectFieldAddress(run, "<Stability>k__BackingField")), 0, 1_000_000),
+                    new("depth", "深度", ReadInt32(ObjectFieldAddress(run, "<Depth>k__BackingField")), 0, 1_000_000),
+                    new("gaze", "奥罗比斯凝视", ReadInt32(ObjectFieldAddress(web, "<GazeOfOrobyss>k__BackingField")), 0, 1_000_000)
                 ]));
         }
         return result;
@@ -829,18 +744,18 @@ internal sealed class LastEpochRuntime : IDisposable
         var data = GetCharacterData();
         if (entityId == "global" && key == "max-corruption")
         {
-            Write(data + 0x158, BitConverter.GetBytes(checked((int)target)));
+            Write(ObjectFieldAddress(data, "<MaxCorruption>k__BackingField"), BitConverter.GetBytes(checked((int)target)));
         }
         else
         {
             var run = FindMonolithRun(entityId);
-            var web = ReadUInt64(run + 0x28);
+            var web = ReadUInt64(ObjectFieldAddress(run, "<SavedEchoWeb>k__BackingField"));
             var address = key switch
             {
-                "corruption" when web != 0 => web + 0x14,
-                "stability" => run + 0x30,
-                "depth" => run + 0x18,
-                "gaze" when web != 0 => web + 0x1C,
+                "corruption" when web != 0 => ObjectFieldAddress(web, "<Corruption>k__BackingField"),
+                "stability" => ObjectFieldAddress(run, "<Stability>k__BackingField"),
+                "depth" => ObjectFieldAddress(run, "<Depth>k__BackingField"),
+                "gaze" when web != 0 => ObjectFieldAddress(web, "<GazeOfOrobyss>k__BackingField"),
                 _ => throw new InvalidOperationException("异界字段无效。")
             };
             Write(address, BitConverter.GetBytes(checked((int)target)));
@@ -856,10 +771,10 @@ internal sealed class LastEpochRuntime : IDisposable
     {
         var result = new List<AdapterEditorEntity>();
         var camera = ResolveStaticFieldObject(string.Empty, "CameraManager", "instance");
-        var virtualCamera = camera == 0 ? 0 : ReadUInt64(camera + 0x20);
+        var virtualCamera = camera == 0 ? 0 : ReadUInt64(ObjectFieldAddress(camera, "virtualCamera"));
         if (camera != 0 && virtualCamera != 0)
         {
-            var fov = checked((long)Math.Round(ReadSingle(virtualCamera + 0xB8), MidpointRounding.AwayFromZero));
+            var fov = checked((long)Math.Round(ReadSingle(InlineValueFieldAddress(virtualCamera, "m_Lens", "Cinemachine", "LensSettings", "FieldOfView")), MidpointRounding.AwayFromZero));
             result.Add(new(
                 "camera",
                 "游戏摄像头",
@@ -877,9 +792,9 @@ internal sealed class LastEpochRuntime : IDisposable
         {
             if (target is < 20 or > 120) throw new InvalidOperationException("摄像头视野角度必须在 20 到 120 之间。");
             var camera = ResolveStaticFieldObject(string.Empty, "CameraManager", "instance");
-            var virtualCamera = camera == 0 ? 0 : ReadUInt64(camera + 0x20);
+            var virtualCamera = camera == 0 ? 0 : ReadUInt64(ObjectFieldAddress(camera, "virtualCamera"));
             if (virtualCamera == 0) throw new InvalidOperationException("当前场景尚未加载游戏摄像头。");
-            Write(virtualCamera + 0xB8, BitConverter.GetBytes((float)target));
+            Write(InlineValueFieldAddress(virtualCamera, "m_Lens", "Cinemachine", "LensSettings", "FieldOfView"), BitConverter.GetBytes((float)target));
         }
         else
         {
@@ -966,7 +881,8 @@ internal sealed class LastEpochRuntime : IDisposable
         {
             var entry = entries + 0x20UL + checked((ulong)index * stride);
             var key = ReadInt32(entry + 0x08);
-            var pair = ReadUInt64(entry + 0x10);
+            // This is an inline System.Collections.Generic.Dictionary entry, not a game object.
+            var pair = ReadUInt64(DictionaryEntryValueAddress(entry));
             if (pair == 0 || key != attribute) continue;
             var pairValue = ObjectFieldAddress(pair, "value");
             value = ReadInt32(pairValue);
@@ -983,10 +899,10 @@ internal sealed class LastEpochRuntime : IDisposable
         int extraTag = 0)
     {
         return ReadReferenceList(GetStatsList(stats), "人物实时统计")
-            .Where(stat => ReadByte(stat + 0x10) == property &&
-                           ReadByte(stat + 0x11) == specialTag &&
-                           ReadInt32(stat + 0x14) == tags &&
-                           ReadInt32(stat + 0x18) == extraTag)
+            .Where(stat => ReadByte(ObjectFieldAddress(stat, "property")) == property &&
+                           ReadByte(ObjectFieldAddress(stat, "specialTag")) == specialTag &&
+                           ReadInt32(ObjectFieldAddress(stat, "tags")) == tags &&
+                           ReadInt32(ObjectFieldAddress(stat, "extraTag")) == extraTag)
             .ToList();
     }
 
@@ -1000,7 +916,7 @@ internal sealed class LastEpochRuntime : IDisposable
         return checked((int)Math.Round(value * 100d, MidpointRounding.AwayFromZero));
     }
 
-    private float ReadAddedValue(ulong stat) => ReadSingle(stat + 0x1C);
+    private float ReadAddedValue(ulong stat) => ReadSingle(ObjectFieldAddress(stat, "addedValue"));
 
     private void WriteCoreAttribute(ulong stats, int attribute, int property, int target)
     {
@@ -1371,11 +1287,12 @@ internal sealed class LastEpochRuntime : IDisposable
         var entry = _moduleBase + ResolveNamedMethodRva(string.Empty, "ExperienceTracker", "GainExp", 3);
         var getTotalInfo = ResolveNamedMethodInfo(string.Empty, "Stats", "GetTotalIncreased", 4);
         var getTotalPointer = ReadUInt64(getTotalInfo);
+        var statsOffset = checked((int)ResolveFieldOffset(ResolveClass(string.Empty, "ExperienceTracker"), "stats", "ExperienceTracker"));
         if (TryGetExperienceGainHook(out var existingStub))
         {
             WriteExecutable(
                 existingStub,
-                BuildExperienceGainHookPayload(existingStub, entry, getTotalInfo, getTotalPointer));
+                BuildExperienceGainHookPayload(existingStub, entry, getTotalInfo, getTotalPointer, statsOffset));
             return;
         }
         var current = Read(entry, ExperienceGainOriginalBytes.Length);
@@ -1387,7 +1304,7 @@ internal sealed class LastEpochRuntime : IDisposable
         var installed = false;
         try
         {
-            Write(stub, BuildExperienceGainHookPayload(stub, entry, getTotalInfo, getTotalPointer));
+            Write(stub, BuildExperienceGainHookPayload(stub, entry, getTotalInfo, getTotalPointer, statsOffset));
 
             var jump = new byte[ExperienceGainOriginalBytes.Length];
             jump[0] = 0xFF;
@@ -1407,7 +1324,8 @@ internal sealed class LastEpochRuntime : IDisposable
         ulong stub,
         ulong entry,
         ulong getTotalInfo,
-        ulong getTotalPointer)
+        ulong getTotalPointer,
+        int statsOffset)
     {
         var code = new Emitter();
         code.Emit(0x48, 0x83, 0xEC, 0x68);
@@ -1415,7 +1333,9 @@ internal sealed class LastEpochRuntime : IDisposable
         code.Emit(0x48, 0x89, 0x54, 0x24, 0x48);
         code.Emit(0x4C, 0x89, 0x44, 0x24, 0x50);
         code.Emit(0x4C, 0x89, 0x4C, 0x24, 0x58);
-        code.Emit(0x48, 0x8B, 0x49, 0x20);
+        // mov rcx, [rcx + current ExperienceTracker.stats offset]
+        code.Emit(0x48, 0x8B, 0x89);
+        code.Emit(BitConverter.GetBytes(statsOffset));
         code.Emit(0x48, 0x85, 0xC9);
         var noStatsJump = code.EmitNearConditionalJump(0x84);
         code.MovEdx(105);
@@ -1566,7 +1486,7 @@ internal sealed class LastEpochRuntime : IDisposable
             throw new InvalidOperationException("实际技能冷却恢复缓存没有发生变化。");
     }
 
-    private float ReadIncreasedValue(ulong stat) => ReadSingle(stat + 0x20);
+    private float ReadIncreasedValue(ulong stat) => ReadSingle(ObjectFieldAddress(stat, "increasedValue"));
 
     private int ReadMovementCooldownPercent(ulong actor)
     {
@@ -1869,14 +1789,14 @@ internal sealed class LastEpochRuntime : IDisposable
         if (parts.Length != 3 || parts[0] != "timeline" ||
             !int.TryParse(parts[1], out var timeline) || !int.TryParse(parts[2], out var difficulty))
             throw new InvalidOperationException("异界时间线身份无效。");
-        return ReadReferenceList(ReadUInt64(GetCharacterData() + 0x150), "异界时间线")
-            .FirstOrDefault(run => ReadInt32(run + 0x10) == timeline && ReadInt32(run + 0x14) == difficulty) is var found && found != 0
+        return ReadReferenceList(ReadUInt64(ObjectFieldAddress(GetCharacterData(), "<MonolithRuns>k__BackingField")), "异界时间线")
+            .FirstOrDefault(run => ReadInt32(ObjectFieldAddress(run, "<TimelineID>k__BackingField")) == timeline && ReadInt32(ObjectFieldAddress(run, "<DifficultyIndex>k__BackingField")) == difficulty) is var found && found != 0
             ? found
             : throw new InvalidOperationException("当前存档已找不到该异界时间线。");
     }
 
     private int SumAllocatedPoints(ulong nodes) =>
-        ReadReferenceList(nodes, "技能节点").Sum(node => (int)ReadByte(node + 0x11));
+        ReadReferenceList(nodes, "技能节点").Sum(node => (int)ReadByte(ObjectFieldAddress(node, "pointsAllocated")));
 
     private int ReadSkillXpRequirement(int level)
     {
@@ -1893,7 +1813,7 @@ internal sealed class LastEpochRuntime : IDisposable
     {
         var result = new Dictionary<int, int>();
         foreach (var shard in ReadReferenceList(list, "已持有词缀碎片"))
-            result[ReadInt32(shard + 0x10)] = ReadInt32(shard + 0x14);
+            result[ReadInt32(ObjectFieldAddress(shard, "<ShardType>k__BackingField"))] = ReadInt32(ObjectFieldAddress(shard, "<Quantity>k__BackingField"));
         return result;
     }
 
@@ -1902,7 +1822,7 @@ internal sealed class LastEpochRuntime : IDisposable
         // Offline mode no longer initializes PlayerFinder.globalData in this build.
         // The active material-stash controller keeps the same authoritative Stash
         // entity that its UI and save loop use, so resolve it from the live container.
-        var stash = ReadUInt64(GetActiveMaterialStash() + 0x98);
+        var stash = ReadUInt64(ObjectFieldAddress(GetActiveMaterialStash(), "<LinkedStash>k__BackingField"));
         return stash != 0 ? stash : throw new InvalidOperationException("离线仓储数据尚未加载。");
     }
 
@@ -1912,13 +1832,13 @@ internal sealed class LastEpochRuntime : IDisposable
         var result = new List<ResourceDefinition>(MaterialContainers.Length);
         foreach (var definition in MaterialContainers)
         {
-            var container = ReadUInt64(materials + definition.Offset);
+            var container = ReadObjectReferenceField(materials, definition.Field);
             if (container == 0) continue;
-            var allowedTypes = ReadUInt64(container + 0x30);
+            var allowedTypes = ReadUInt64(ObjectFieldAddress(container, "allowedBaseType"));
             var type = allowedTypes == 0 || ReadInt32(allowedTypes + 0x18) == 0
                 ? -1
                 : ReadInt32(allowedTypes + 0x20);
-            var subType = ReadInt32(container + 0x78);
+            var subType = ReadInt32(ObjectFieldAddress(container, "allowedSubID"));
             if (type is < 0 or > byte.MaxValue || subType is < 0 or > byte.MaxValue)
                 throw new InvalidDataException($"{definition.Name} 的资源身份超出当前构建允许范围。");
             result.Add(new(checked((byte)type), checked((byte)subType), definition.Name));
@@ -1931,17 +1851,17 @@ internal sealed class LastEpochRuntime : IDisposable
         const byte keyType = 104;
         var itemList = ResolveStaticFieldObject("LE.AssetManagement", "GlobalAssets", "_storage_MasterItemsList");
         if (itemList == 0) throw new InvalidOperationException("物品定义尚未加载。");
-        var baseItems = ReadReferenceArray(ReadUInt64(itemList + 0x28), "非装备物品定义");
-        var keyBase = baseItems.FirstOrDefault(item => ReadInt32(item + 0x28) == keyType);
+        var baseItems = ReadReferenceArray(ReadUInt64(ObjectFieldAddress(itemList, "nonEquippableItems")), "非装备物品定义");
+        var keyBase = baseItems.FirstOrDefault(item => ReadInt32(ObjectFieldAddress(item, "baseTypeID")) == keyType);
         if (keyBase == 0) throw new InvalidOperationException("副本钥匙定义尚未加载。");
         var result = new List<ResourceDefinition>();
-        foreach (var subItem in ReadReferenceList(ReadUInt64(keyBase + 0x50), "副本钥匙定义"))
+        foreach (var subItem in ReadReferenceList(ReadUInt64(ObjectFieldAddress(keyBase, "subItems")), "副本钥匙定义"))
         {
-            var subType = ReadInt32(subItem + 0x20);
+            var subType = ReadInt32(ObjectFieldAddress(subItem, "subTypeID"));
             if (subType is < 0 or > byte.MaxValue) continue;
             var name = ReadLocalizedValue($"Item_SubType_Name_{keyType}_{subType}");
-            if (string.IsNullOrWhiteSpace(name)) name = ReadManagedString(ReadUInt64(subItem + 0x18));
-            if (string.IsNullOrWhiteSpace(name)) name = ReadManagedString(ReadUInt64(subItem + 0x10));
+            if (string.IsNullOrWhiteSpace(name)) name = ReadManagedString(ReadUInt64(ObjectFieldAddress(subItem, "displayName")));
+            if (string.IsNullOrWhiteSpace(name)) name = ReadManagedString(ReadUInt64(ObjectFieldAddress(subItem, "name")));
             if (string.IsNullOrWhiteSpace(name)) name = $"副本钥匙 {subType}";
             result.Add(new(keyType, checked((byte)subType), name));
         }
@@ -1954,7 +1874,7 @@ internal sealed class LastEpochRuntime : IDisposable
         foreach (var pair in ReadReferenceList(list, description))
         {
             if (!TryReadLocationPairIdentity(pair, out var type, out var subType)) continue;
-            result[(type, subType)] = new(pair, Math.Max(0, ReadInt32(pair + 0x2C)));
+            result[(type, subType)] = new(pair, Math.Max(0, ReadInt32(ObjectFieldAddress(pair, "<Quantity>k__BackingField"))));
         }
         return result;
     }
@@ -1963,7 +1883,7 @@ internal sealed class LastEpochRuntime : IDisposable
     {
         type = 0;
         subType = 0;
-        var data = pair == 0 ? 0 : ReadUInt64(pair + 0x18);
+        var data = pair == 0 ? 0 : ReadUInt64(ObjectFieldAddress(pair, "<Data>k__BackingField"));
         if (data == 0 || ReadInt32(data + 0x18) < 7) return false;
         type = ReadByte(data + 0x25);
         subType = ReadByte(data + 0x26);
@@ -2003,12 +1923,12 @@ internal sealed class LastEpochRuntime : IDisposable
             type,
             subType
         ]);
-        SetManagedReference(pair, pair + 0x18, data);
-        Write(pair + 0x20, BitConverter.GetBytes(isKey ? 0 : -4));
-        Write(pair + 0x24, BitConverter.GetBytes(isKey ? subType : -4));
-        Write(pair + 0x2C, BitConverter.GetBytes(quantity));
-        Write(pair + 0x30, BitConverter.GetBytes(checked((ushort)(isKey ? 100 : 0))));
-        Write(pair + 0x32, [2]);
+        SetManagedReference(pair, ObjectFieldAddress(pair, "<Data>k__BackingField"), data);
+        Write(InlineValueFieldAddress(pair, "<InventoryPosition>k__BackingField", "", "ItemInventoryPosition", "X"), BitConverter.GetBytes(isKey ? 0 : -4));
+        Write(InlineValueFieldAddress(pair, "<InventoryPosition>k__BackingField", "", "ItemInventoryPosition", "Y"), BitConverter.GetBytes(isKey ? subType : -4));
+        Write(ObjectFieldAddress(pair, "<Quantity>k__BackingField"), BitConverter.GetBytes(quantity));
+        Write(ObjectFieldAddress(pair, "<ContainerID>k__BackingField"), BitConverter.GetBytes(checked((ushort)(isKey ? 100 : 0))));
+        Write(ObjectFieldAddress(pair, "<FormatVersion>k__BackingField"), [2]);
         AppendManagedReference(list, pair);
         return pair;
     }
@@ -2070,10 +1990,10 @@ internal sealed class LastEpochRuntime : IDisposable
 
     private bool AffixHasShard(ulong affix)
     {
-        if (ReadByte(affix + 0x4C) != 0) return false;
-        var special = ReadInt32(affix + 0x50);
+        if (ReadByte(ObjectFieldAddress(affix, "rollsOn")) != 0) return false;
+        var special = ReadInt32(ObjectFieldAddress(affix, "specialAffixType"));
         if (special is not (0 or 3)) return false;
-        var canRollOn = ReadUInt64(affix + 0x78);
+        var canRollOn = ReadUInt64(ObjectFieldAddress(affix, "canRollOn"));
         if (canRollOn == 0) return false;
         var count = ReadInt32(canRollOn + 0x18);
         if (count != 1) return true;
@@ -2083,17 +2003,17 @@ internal sealed class LastEpochRuntime : IDisposable
 
     private ulong GetMaterialContainers()
     {
-        var materials = ReadUInt64(GetActiveMaterialStash() + 0x90);
+        var materials = ReadUInt64(ObjectFieldAddress(GetActiveMaterialStash(), "<Materials>k__BackingField"));
         return materials != 0 ? materials : throw new InvalidOperationException("材料容器尚未加载。");
     }
 
     private ulong GetActiveMaterialStash()
     {
         var manager = RequirePlayerFinderRoot("localItemContainersManager", "物品容器");
-        var stashHolder = ReadUInt64(manager + 0xA8);
+        var stashHolder = ReadUInt64(ObjectFieldAddress(manager, "stash"));
         if (stashHolder == 0) throw new InvalidOperationException("材料存储尚未加载。");
-        var stashContainers = ReadUInt64(stashHolder + 0x18);
-        var currentIndex = ReadInt32(stashHolder + 0x20);
+        var stashContainers = ReadUInt64(ObjectFieldAddress(stashHolder, "stashItemContainers"));
+        var currentIndex = ReadInt32(ObjectFieldAddress(stashHolder, "<CurrentStashIndex>k__BackingField"));
         if (stashContainers == 0 || currentIndex < 0 || currentIndex >= ReadInt32(stashContainers + 0x18))
             throw new InvalidDataException("当前材料存储索引无效。");
         var activeStash = ReadUInt64(stashContainers + 0x20UL + checked((ulong)currentIndex * 8UL));
@@ -2152,6 +2072,14 @@ internal sealed class LastEpochRuntime : IDisposable
         var klass = ReadUInt64(instance);
         if (klass == 0) throw new InvalidDataException($"读取字段 {fieldName} 时对象类型无效。");
         return checked(instance + ResolveFieldOffset(klass, fieldName, $"0x{klass:X}"));
+    }
+
+    private ulong InlineValueFieldAddress(ulong instance, string fieldName, string @namespace, string typeName, string member)
+    {
+        // IL2CPP reports boxed value-type field offsets, including the two-pointer object header.
+        // Subtract that header when accessing the value embedded in its owning object.
+        var offset = ResolveFieldOffset(ResolveClass(@namespace, typeName), member, typeName);
+        return checked(ObjectFieldAddress(instance, fieldName) + offset - 0x10);
     }
 
     private ulong ReadObjectReferenceField(ulong instance, string fieldName) =>
@@ -2309,7 +2237,7 @@ internal sealed class LastEpochRuntime : IDisposable
             _localizedValues ??= ReadLocalizationTable();
             return _localizedValues.TryGetValue(key, out var value) ? value : string.Empty;
         }
-        catch (Exception exception) when (exception is Win32Exception or InvalidDataException or OverflowException)
+        catch (Exception exception) when (exception is Win32Exception or InvalidDataException or InvalidOperationException or OverflowException)
         {
             // Localization is a presentation enhancement. A changed dictionary layout must not
             // disable the stable numeric resource identity or its editor.
@@ -2333,11 +2261,14 @@ internal sealed class LastEpochRuntime : IDisposable
             var entry = entries + 0x20UL + checked((ulong)index * stride);
             var storedKey = ReadManagedString(ReadUInt64(entry + 0x08));
             if (!IsRelevantLocalizationKey(storedKey)) continue;
-            var value = ReadManagedString(ReadUInt64(entry + 0x10));
+            // The value reference is part of the runtime Dictionary entry ABI, not ItemContainerEntry.data.
+            var value = ReadManagedString(ReadUInt64(DictionaryEntryValueAddress(entry)));
             if (!string.IsNullOrWhiteSpace(value)) result[storedKey] = value;
         }
         return result;
     }
+
+    private static ulong DictionaryEntryValueAddress(ulong entry) => checked(entry + 0x10);
 
     private static bool IsRelevantLocalizationKey(string key) =>
         key.StartsWith("Item_SubType_Name_", StringComparison.Ordinal) ||
@@ -2377,24 +2308,24 @@ internal sealed class LastEpochRuntime : IDisposable
 
     private void MarkEntityDirty(ulong entity, string description)
     {
-        var flags = ReadUInt64(entity + 0x38);
+        var flags = ReadUInt64(ObjectFieldAddress(entity, "<Flags>k__BackingField"));
         if (flags == 0) throw new InvalidOperationException($"{description}状态尚未加载，无法请求游戏自动保存。");
 
         // EntityFlags.SetDirty(true) ultimately updates only these two fields. Writing them directly
         // avoids calling serialization or Unity APIs from an injected thread; the game's own
         // DataStoreCache update loop observes the flag and performs the save on its normal path.
-        var currentFlags = ReadInt32(flags + 0x10);
+        var currentFlags = ReadInt32(ObjectFieldAddress(flags, "_flags"));
         if ((currentFlags & ~7) != 0)
             throw new InvalidDataException($"{description}状态结构与受支持构建不一致，已拒绝请求自动保存。");
-        var previousDateData = ReadUInt64(flags + 0x20);
+        var previousDateData = ReadUInt64(ObjectFieldAddress(flags, "<DirtyTime>k__BackingField"));
         var previousTicks = previousDateData & 0x3FFF_FFFF_FFFF_FFFFUL;
         if (previousTicks > unchecked((ulong)DateTime.MaxValue.Ticks))
             throw new InvalidDataException($"{description}脏标记时间结构无效，已拒绝请求自动保存。");
 
         var utcDateData = unchecked((ulong)DateTime.UtcNow.Ticks) | 0x4000_0000_0000_0000UL;
-        Write(flags + 0x20, BitConverter.GetBytes(utcDateData));
-        Write(flags + 0x10, BitConverter.GetBytes(currentFlags | 1));
-        if ((ReadInt32(flags + 0x10) & 1) == 0 || ReadUInt64(flags + 0x20) != utcDateData)
+        Write(ObjectFieldAddress(flags, "<DirtyTime>k__BackingField"), BitConverter.GetBytes(utcDateData));
+        Write(ObjectFieldAddress(flags, "_flags"), BitConverter.GetBytes(currentFlags | 1));
+        if ((ReadInt32(ObjectFieldAddress(flags, "_flags")) & 1) == 0 || ReadUInt64(ObjectFieldAddress(flags, "<DirtyTime>k__BackingField")) != utcDateData)
             throw new InvalidOperationException($"游戏没有接受{description}脏标记。");
     }
 

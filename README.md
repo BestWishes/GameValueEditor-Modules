@@ -29,11 +29,20 @@ catalog.json
 
 - [`game.fzzml` v2.1.4](games/fzzml/docs/README.md)
 - [`game.worldapart` v1.3.4](games/worldapart/docs/README.md)
-- [`game.last-epoch` v0.5.5](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
+- [`game.last-epoch` v0.5.6](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
+- [`game.play-again-expedition` v0.0.6](games/play-again-expedition/docs/LOCAL_USE.md)，包含“材料”“大转盘”“掉落”，要求主程序至少 0.5.2；直接接入正常启动的原游戏，无须启动参数或连接准备，概率调用点从当前运行代码发现。
+
+2026-10-09 远征本地修复不再依赖旧构建哈希、固定运行时版本或概率列号，已用当前 0.116.73 的实际消费者核验，见[小更新修复记录](games/play-again-expedition/docs/SMALL_UPDATE_LOCAL.md)。不问凡尘（内部 ID `game.fzzml`）仍有精确构建和固定原生地址限制，本轮只检查，见[检查结论](games/fzzml/docs/SMALL_UPDATE_REVIEW_LOCAL.md)；不能把远征的完成结论套用到它。
 
 具体功能、线程、保存链路和实机证据只维护在对应游戏目录，不复制到主程序架构文档。
 
+2026-10-09 本地后续修复：Last Epoch 取消历史哈希整包门槛，资源/异界/摄像头及统计按当前 IL2CPP 字段重新定位，个别可选属性失败不连带停用整个模块。远征请求/接口清理串行等待。配套宿主先按游戏名称识别并保留连接会话页面；小更新的构建记录与旧地址隔离不影响游戏归属。这些改动尚未提交或发布，Last Epoch 更新构建实机读取尚待游戏运行后核验。
+
+再刷一把：远征本地模块的当前构建与验收见[三页完成设计和复核](games/play-again-expedition/docs/THREE_EDITORS_COMPLETION_LOCAL.md)，早期两页记录见[历史设计](games/play-again-expedition/docs/IMPLEMENTATION_LOCAL.md)。运行包只有 DLL 与清单，无外部脚本依赖；构建嵌入请求需要 Node.js。它尚未走正式发布流程，不应执行全仓正式发布或为了通过发行检查而伪造贡献者、标签与目录记录。
+
 ## 构建
+
+本地接入边界修复的完整离线测试包复用宿主 `scripts/build-complete-offline-bundle.ps1` 的显式 local-review 模式，预装三个目录模块和远征 0.0.5；不修改 catalog 或正式 ZIP。模块/目录 JSON Schema 同步支持可选 `packageSha256`，空 IL2CPP 分量必须由完整包指纹补足，不接受模糊通配。可运行 `./scripts/test-package-build-constraints.ps1` 检查旧原生声明、新包声明和缺值/错误分量；这不是正式发布门禁的替代品。
 
 要求 Windows x64 与 .NET 8 SDK。
 

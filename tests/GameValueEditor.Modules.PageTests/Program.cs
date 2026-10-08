@@ -16,7 +16,7 @@ internal static class Program
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
         Dispatcher.CurrentDispatcher.BeginInvoke(async () =>
         {
-            try { await RunAsync(); await CheckRefreshAsync(); }
+            try { CheckRuntimeLayouts(); await RunAsync(); await CheckRefreshAsync(); }
             catch (Exception error) { failure = error; }
             finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }
         });
@@ -24,6 +24,31 @@ internal static class Program
         if (failure is not null) { Console.Error.WriteLine(failure); return 1; }
         Console.WriteLine($"Module real-page write/snapshot regressions passed: {_assertions} assertions; no game or file writes.");
         return 0;
+    }
+    private static void CheckRuntimeLayouts()
+    {
+        var guard = typeof(LastEpochGameAdapter).Assembly.GetType("GameValueEditor.Modules.LastEpoch.LastEpochBuildGuard")!;
+        Check(guard.GetMethod("IsVerifiedBuild", BindingFlags.Static | BindingFlags.NonPublic) is null &&
+            !guard.Assembly.GetManifestResourceNames().Any(name => name.Contains("VerifiedBuilds", StringComparison.Ordinal)),
+            "Historical hash whitelist still controls module connection");
+        try
+        {
+            guard.GetMethod("EnsureCurrentProcess", BindingFlags.Static | BindingFlags.NonPublic)!
+                .Invoke(null, [Environment.ProcessId, null]);
+            throw new InvalidOperationException("Non-game process accepted");
+        }
+        catch (TargetInvocationException error) when (error.InnerException is InvalidOperationException) { _assertions++; }
+        var runtime = typeof(LastEpochGameAdapter).Assembly.GetType("GameValueEditor.Modules.LastEpoch.LastEpochRuntime")!;
+        var valueAddress = runtime.GetMethod("DictionaryEntryValueAddress", BindingFlags.Static | BindingFlags.NonPublic)!;
+        Check((ulong)valueAddress.Invoke(null, [0x1000UL])! == 0x1010UL, "Inline Dictionary entry was mistaken for a game object");
+        var payloadBuilder = runtime.GetMethod("BuildExperienceGainHookPayload", BindingFlags.Static | BindingFlags.NonPublic)!;
+        foreach (var offset in new[] { 0x20, 0x100, 0x234 })
+        {
+            var payload = (byte[])payloadBuilder.Invoke(null, [0x100000UL, 0x200000UL, 0x300000UL, 0x400000UL, offset])!;
+            var instruction = new byte[] { 0x48, 0x8B, 0x89 }.Concat(BitConverter.GetBytes(offset)).ToArray();
+            Check(payload.Length == 0x100 && Enumerable.Range(0, 0xD0 - instruction.Length + 1)
+                .Any(index => payload.AsSpan(index, instruction.Length).SequenceEqual(instruction)), "Experience hook did not use the current stats offset");
+        }
     }
     private static Task Call(IGameEditorPage page, string name)
     {

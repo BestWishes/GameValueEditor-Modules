@@ -1,0 +1,188 @@
+# Historical source fixture: read as text by tests only. Never execute.
+[CmdletBinding()]
+param([ValidateSet('Apply', 'Restore')][string]$Stage = 'Apply', [switch]$ValidateOnly, [switch]$InspectPreparation)
+$ErrorActionPreference = 'Stop'
+# Fixed authorized 2 <-> 3 trial only. No screen control, new save backup,
+# arbitrary expression/field, forced debug attach, or inspector service closure.
+$port = 59321
+$nodeExecutable = 'C:/historical-user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
+$trialModule = 'D:/MyOtherProjects/GameValueEditor-Modules/experiments/play-again-expedition/src/protection-scroll-trial.cjs'
+$trialRevision = 'single-dispatch-v2'
+$contextModule = 'D:/MyOtherProjects/GameValueEditor-Modules/experiments/play-again-expedition/src/read-context-contract.cjs'
+$trialRoot = 'D:/MyOtherProjects/GameValueEditor-Modules/artifacts/play-again-expedition/20261007-startup-protection-trial'
+$expectedLauncher = 'G:\Game\Steam\steamapps\common\PlayAgainExpedition\PlayAgainExpedition.exe'
+$expectedProfile = 'C:\historical-user\AppData\Roaming\ZsebExpedition'
+$dispatchPath = Join-Path $trialRoot ($Stage.ToLowerInvariant() + '.dispatch.' + $trialRevision + '.json')
+$resultPath = Join-Path $trialRoot ($Stage.ToLowerInvariant() + '.result.' + $trialRevision + '.json')
+if (-not $InspectPreparation -and ((Test-Path -LiteralPath $dispatchPath) -or (Test-Path -LiteralPath $resultPath))) { throw 'Stage already claimed. Do NOT resend; inspect actual state first.' }
+if (-not (Test-Path -LiteralPath (Join-Path $trialRoot 'TRIAL_STATUS.md'))) { throw 'Trial root not prepared' }
+$expectedAnchorHash = $null
+if ($Stage -eq 'Restore' -and -not $InspectPreparation) {
+    $applied = Get-Content -LiteralPath (Join-Path $trialRoot 'apply.result.single-dispatch-v2.json') -Encoding utf8 -Raw | ConvertFrom-Json
+    if ($applied.Observation.material.status -ne 'storage-verified' -or $applied.Observation.material.previousValue -ne 2 -or $applied.Observation.material.value -ne 3 -or $applied.Observation.flushRequested -ne $true -or $applied.Observation.anchorHash -notmatch '^[0-9a-f]{64}$') { throw 'No confirmed apply result for restoration' }
+    $expectedAnchorHash = $applied.Observation.anchorHash
+}
+$mainCandidates = @(Get-CimInstance Win32_Process -Filter "Name='ZsebExpedition.exe'" | Where-Object {
+    $_.CommandLine -notmatch '(?:^|\s)--type=' -and $_.CommandLine -match '(?:^|\s)--inspect=127\.0\.0\.1:59321(?:\s|$)'
+})
+if ($mainCandidates.Count -ne 1) { throw 'Require one explicitly started original game main process' }
+$mainGame = $mainCandidates[0]
+# This Apply is authorized for the already-read live session, not a durable PID.
+if ($Stage -eq 'Apply' -and ($mainGame.ProcessId -ne 1120 -or $mainGame.CreationDate.ToUniversalTime() -ne ([datetime]'2026-10-07T22:10:31.815364+08:00').ToUniversalTime())) { throw 'Apply session changed since user-confirmed read' }
+$launcher = Get-CimInstance Win32_Process -Filter "ProcessId=$($mainGame.ParentProcessId)"
+if ($launcher.ExecutablePath -ne $expectedLauncher) { throw 'Not the original Steam installation launcher' }
+$mainExecutable = $mainGame.ExecutablePath
+$archive = Join-Path ([IO.Path]::GetDirectoryName($mainExecutable)) 'resources/app.asar'
+if ((Get-FileHash -LiteralPath $mainExecutable -Algorithm SHA256).Hash -ne 'A79F66A6F236B237E25C00DD9F8BA763F9BAD13E16CD3269DE2348EA7FFEF396') { throw 'Unknown executable build' }
+if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne '5A4F4E414BD06FC248CFE2AD30E7D9EE3B110968DB888FDB733CD57F78A6B294') { throw 'Unknown ASAR build' }
+function Assert-TrialSession {
+    $live = Get-CimInstance Win32_Process -Filter "ProcessId=$($mainGame.ProcessId)"
+    $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction Stop)
+    if ($live.ExecutablePath -ne $mainExecutable -or $live.CreationDate -ne $mainGame.CreationDate -or
+        $listeners.Count -ne 1 -or $listeners[0].LocalAddress -ne '127.0.0.1' -or $listeners[0].OwningProcess -ne $mainGame.ProcessId) { throw 'Game session or loopback listener changed' }
+}
+Assert-TrialSession
+$handler = [Net.Http.HttpClientHandler]::new()
+$handler.UseProxy = $false; $handler.AllowAutoRedirect = $false
+$http = [Net.Http.HttpClient]::new($handler)
+$http.Timeout = [TimeSpan]::FromSeconds(5); $http.MaxResponseContentBufferSize = 1048576
+try {
+    $targets = @($http.GetStringAsync("http://127.0.0.1:$port/json/list").GetAwaiter().GetResult() | ConvertFrom-Json)
+    if ($targets.Count -ne 1 -or $targets[0].type -ne 'node' -or $targets[0].title -ne 'electron/js2c/browser_init') { throw 'Unexpected inspector target' }
+    $socketUri = [uri]$targets[0].webSocketDebuggerUrl
+    if ($socketUri.Scheme -ne 'ws' -or $socketUri.Host -ne '127.0.0.1' -or $socketUri.Port -ne $port -or $socketUri.UserInfo -or $socketUri.Query -or $socketUri.Fragment -or $socketUri.AbsolutePath -notmatch '^/[0-9a-f-]{36}$') { throw 'Invalid inspector WebSocket URL' }
+} finally { $http.Dispose(); $handler.Dispose() }
+$trialSource = & $nodeExecutable -p "require('$trialModule').protectionScrollTrial.toString()"
+if ($LASTEXITCODE -ne 0 -or -not $trialSource) { throw 'Fixed trial source unavailable' }
+$contextSource = & $nodeExecutable -p "require('$contextModule').assertReadonlyContext.toString()"
+if ($LASTEXITCODE -ne 0 -or -not $contextSource) { throw 'Context guard source unavailable' }
+$trialSourceJson = ($trialSource -join "`n") | ConvertTo-Json -Compress
+$atomicSource = & $nodeExecutable -p "require('$trialModule').executeProtectionTrialAtomically.toString()"
+if ($LASTEXITCODE -ne 0 -or -not $atomicSource) { throw 'Atomic trial source unavailable' }
+$atomicSourceJson = ($atomicSource -join "`n") | ConvertTo-Json -Compress
+$contextCode = $contextSource -join "`n"
+$mainPathJson = $mainExecutable | ConvertTo-Json -Compress
+$profileJson = $expectedProfile | ConvertTo-Json -Compress
+$archiveJson = $archive | ConvertTo-Json -Compress
+$expectedAnchorJson = $expectedAnchorHash | ConvertTo-Json -Compress
+$expectedValue = if ($Stage -eq 'Apply') { 2 } else { 3 }
+$targetValue = if ($Stage -eq 'Apply') { 3 } else { 2 }
+$inspectionLiteral = if ($InspectPreparation) { 'true' } else { 'false' }
+$mainExpression = @"
+(async function () {
+  if (process.pid !== $($mainGame.ProcessId) || process.execPath !== $mainPathJson || process.versions.electron !== '44.2.0' || process.versions.node !== '24.20.0') throw Error('Session/build changed');
+  const electron = process.mainModule.require('electron');
+  if (electron.app.getPath('userData') !== $profileJson) throw Error('Not the original profile');
+  const windows = electron.BrowserWindow.getAllWindows().filter(function (w) { return !w.isDestroyed() && w.webContents.getURL() === 'expedition://game/index.html'; });
+  if (windows.length !== 1) throw Error('Require one original game window');
+  const contents = windows[0].webContents;
+  const contextContract = ($contextCode)(contents.getLastWebPreferences(), electron.app.getAppPath(), $archiveJson);
+  const source = $trialSourceJson;
+  const atomicSource = $atomicSourceJson;
+  const input = { expectedValue: $expectedValue, targetValue: $targetValue, slot: 'zseb-expedition-v1', journeyMode: 'guardian' };
+  const call = async function (stage, args) {
+    // Catch our guard exceptions inside the renderer so Electron cannot hide them.
+    const code = "'use strict'; (() => { try { return { ok: true, result: (" + source + ")(" + JSON.stringify(stage) + "," + JSON.stringify(args) + ") }; } catch (error) { return { ok: false, error: String(error.message) }; } })()";
+    const returned = await contents.executeJavaScriptInIsolatedWorld(999, [{ code }], false);
+    if (returned.ok !== true) throw Error(stage + ': ' + returned.error);
+    return returned.result;
+  };
+  if ($inspectionLiteral) {
+    try {
+      const first = await call('prepare', input);
+      const second = await call('prepare', input);
+      const before = JSON.parse(first.beforeSave), after = JSON.parse(second.beforeSave);
+      const changedTopLevelFields = Object.keys(before).filter(key => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
+      const changedOfflineFields = Object.keys(before.offline || {}).filter(key => JSON.stringify(before.offline[key]) !== JSON.stringify(after.offline[key]));
+      const pairCode = "'use strict'; (() => { try { const trial = (" + source + "); const input = " + JSON.stringify(input) + "; return { ok: true, first: trial('prepare', input), second: trial('prepare', input) }; } catch (error) { return { ok: false, error: String(error.message) }; } })()";
+      const pair = await contents.executeJavaScriptInIsolatedWorld(999, [{ code: pairCode }], false);
+      if (pair.ok !== true) throw Error('same-dispatch prepare: ' + pair.error);
+      const pairBefore = JSON.parse(pair.first.beforeSave), pairAfter = JSON.parse(pair.second.beforeSave);
+      return { inspectionOnly: true, nativeSaveCalled: false, preparedTwice: true,
+        liveQuantity: first.value, storedQuantity: JSON.parse(first.storedBefore).materials.protectionScrolls,
+        snapshotsMatchAcrossDispatches: first.beforeSave === second.beforeSave,
+        changedTopLevelFields, changedOfflineFields,
+        snapshotsMatchWithinOneDispatch: pair.first.beforeSave === pair.second.beforeSave,
+        withinDispatchChangedFields: Object.keys(pairBefore).filter(key => JSON.stringify(pairBefore[key]) !== JSON.stringify(pairAfter[key])),
+        contextContract, world: 999 };
+    } catch (error) { return { inspectionOnly: true, nativeSaveCalled: false, preparedTwice: false, error: String(error.message), contextContract, world: 999 }; }
+  }
+  const prepared = await call('prepare', input);
+  const hash = function (value) { return process.mainModule.require('node:crypto').createHash('sha256').update(value).digest('hex'); };
+  const anchorHash = hash(prepared.anchor);
+  const expectedAnchorHash = $expectedAnchorJson;
+  if (expectedAnchorHash !== null && expectedAnchorHash !== anchorHash) throw Error('Original save anchor changed; do not restore another save');
+  const atomicCode = "'use strict'; (() => { try { return { ok: true, result: (" + atomicSource + ")((" + source + ")," + JSON.stringify(input) + "," + JSON.stringify(prepared.anchor) + ") }; } catch (error) { return { ok: false, error: String(error.message) }; } })()";
+  const atomicPacket = await contents.executeJavaScriptInIsolatedWorld(999, [{ code: atomicCode }], false);
+  if (atomicPacket.ok !== true) throw Error('atomic trial: ' + atomicPacket.error);
+  const beforeHash = hash(atomicPacket.result.beforeSave);
+  const committed = atomicPacket.result.outcome;
+  const afterHash = typeof committed.afterSave === 'string' ? hash(committed.afterSave) : null;
+  const material = Object.assign({}, committed);
+  delete material.afterSave;
+  if (material.status === 'storage-verified' && (material.storageVerified !== true ||
+      material.onlySerializedMaterialChanged !== true || material.value !== input.targetValue)) throw Error('Incomplete commit result; do not retry');
+  let flushRequested = false, flushError = null;
+  if (material.status === 'storage-verified') {
+    try { contents.session.flushStorageData(); flushRequested = true; }
+    catch (error) { flushError = String(error.message); }
+  }
+  return { material, contextContract, beforeHash, afterHash, anchorHash, flushRequested, flushError,
+    electronVersion: process.versions.electron, nodeVersion: process.versions.node, world: 999, originalProfileVerified: true };
+})()
+"@
+$requestBytes = [Text.Encoding]::UTF8.GetBytes((@{
+    id = 301; method = 'Runtime.evaluate'; params = @{ expression = $mainExpression; awaitPromise = $true; returnByValue = $true; timeout = 3000 }
+} | ConvertTo-Json -Depth 5 -Compress))
+Assert-TrialSession
+if ($ValidateOnly) {
+    # Validate the fixed request without creating a dispatch claim or connecting WS.
+    [pscustomobject]@{ MainExpression = $mainExpression; RequestBytes = $requestBytes.Length; SendsRuntimeRequest = $false; CreatesDispatchClaim = $false } | ConvertTo-Json -Depth 3
+    return
+}
+# Generated trial metadata, NOT a copied save. CreateNew is the atomic no-replay claim.
+$dispatch = @{ Stage = $Stage; Revision = $trialRevision; Phase = 'dispatch-claimed-result-unknown'; ClaimedAt = [datetimeoffset]::Now.ToString('o');
+    SessionProcessId = $mainGame.ProcessId; SessionCreatedAt = $mainGame.CreationDate.ToString('o');
+    ExpectedValue = $expectedValue; TargetValue = $targetValue; NewBackupCreated = $false }
+if (-not $InspectPreparation) {
+    $claim = [IO.File]::Open($dispatchPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+    try { $claimBytes = [Text.Encoding]::UTF8.GetBytes(($dispatch | ConvertTo-Json -Compress)); $claim.Write($claimBytes, 0, $claimBytes.Length); $claim.Flush($true) }
+    finally { $claim.Dispose() }
+}
+$socket = [Net.WebSockets.ClientWebSocket]::new()
+$socket.Options.Proxy = $null
+$cancellation = [Threading.CancellationTokenSource]::new(12000)
+try {
+    $null = $socket.ConnectAsync($socketUri, $cancellation.Token).GetAwaiter().GetResult()
+    $null = $socket.SendAsync([ArraySegment[byte]]::new($requestBytes), [Net.WebSockets.WebSocketMessageType]::Text, $true, $cancellation.Token).GetAwaiter().GetResult()
+    $stream = [IO.MemoryStream]::new()
+    try {
+        do {
+            $chunk = [byte[]]::new(4096)
+            $received = $socket.ReceiveAsync([ArraySegment[byte]]::new($chunk), $cancellation.Token).GetAwaiter().GetResult()
+            if ($received.MessageType -ne [Net.WebSockets.WebSocketMessageType]::Text) { throw 'Unexpected protocol frame; result unknown' }
+            $stream.Write($chunk, 0, $received.Count)
+            if ($stream.Length -gt 65536) { throw 'Protocol response exceeds limit; result unknown' }
+        } while (-not $received.EndOfMessage)
+        $response = [Text.Encoding]::UTF8.GetString($stream.ToArray()) | ConvertFrom-Json
+    } finally { $stream.Dispose() }
+    if ($response.id -ne 301 -or $response.error) { throw 'Unexpected protocol response; do not resend' }
+    if ($response.result.exceptionDetails) { throw $response.result.exceptionDetails.exception.description }
+    $observation = $response.result.result.value
+    $closeTimeout = [Threading.CancellationTokenSource]::new(3000)
+    try { $null = $socket.CloseAsync([Net.WebSockets.WebSocketCloseStatus]::NormalClosure, 'one protection-scroll trial finished', $closeTimeout.Token).GetAwaiter().GetResult() }
+    finally { $closeTimeout.Dispose() }
+} finally { $socket.Dispose(); $cancellation.Dispose() }
+Assert-TrialSession
+$result = [pscustomobject]@{
+    Stage = $Stage; ObservedAt = [datetimeoffset]::Now.ToString('o'); Observation = $observation;
+    OriginalGameStillRunning = $true; ClientDisconnected = $true; InspectorServerClosed = $false;
+    StorageDatabaseOpened = $false; NewBackupCreated = $false; AutomaticRetry = $false
+}
+$resultJson = $result | ConvertTo-Json -Depth 6
+if ($InspectPreparation) { $resultJson; return }
+$resultFile = [IO.File]::Open($resultPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+try { $resultBytes = [Text.Encoding]::UTF8.GetBytes($resultJson); $resultFile.Write($resultBytes, 0, $resultBytes.Length); $resultFile.Flush($true) }
+finally { $resultFile.Dispose() }
+$resultJson
+if ($observation.material.status -ne 'storage-verified' -or $observation.flushRequested -ne $true) { throw 'Trial not fully confirmed; no automatic rollback or retry. Inspect actual state.' }

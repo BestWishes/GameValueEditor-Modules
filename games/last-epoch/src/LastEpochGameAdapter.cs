@@ -108,8 +108,7 @@ public sealed class LastEpochGameAdapter :
 
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint)
     {
-        if (!LastEpochBuildGuard.IsVerifiedBuild(fingerprint) ||
-            !process.ProcessName.Equals("Last Epoch", StringComparison.OrdinalIgnoreCase) ||
+        if (!process.ProcessName.Equals("Last Epoch", StringComparison.OrdinalIgnoreCase) ||
             !LastEpochRuntime.IsOfflineProcess(process.ProcessId))
             return false;
         try
@@ -120,7 +119,7 @@ public sealed class LastEpochGameAdapter :
         }
         catch
         {
-            // Symbol presence alone cannot validate the fixed layouts used by this module.
+            // A running instance without the module's character root is not ready yet.
             return false;
         }
     }
@@ -130,7 +129,6 @@ public sealed class LastEpochGameAdapter :
         GameBuildIdentity fingerprint)
     {
         var offline = LastEpochRuntime.IsOfflineProcess(process.ProcessId);
-        var verifiedBuild = LastEpochBuildGuard.IsVerifiedBuild(fingerprint);
         var supported = offline && Supports(process, fingerprint);
         return
         [
@@ -138,10 +136,9 @@ public sealed class LastEpochGameAdapter :
                 offline ? "当前进程处于离线单机模式。" : "当前进程不是模块允许的离线模式。"),
             new("IL2CPP 语义结构",
                 supported ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
-                supported ? "已验证构建的必需类型、字段和方法检查通过。" : "模块未启用，运行结构或实际进程构建检查未通过。"),
-            new("已验证构建与固定布局",
-                verifiedBuild ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
-                verifiedBuild ? "三项指纹命中同一已验证构建记录；实际进程仍需验证。" : LastEpochBuildGuard.UnverifiedBuildMessage),
+                supported ? "已从当前游戏定位人物数据入口；各功能按当前元数据重新定位。" : "游戏数据入口尚未加载或发生变化。"),
+            new("更新后自动定位", GameCompatibilityDiagnosticStatus.Passed,
+                "不再要求文件指纹命中旧构建清单；资源、异界、摄像头与人物字段按名称定位。"),
             new("模块自有页面", GameCompatibilityDiagnosticStatus.Passed,
                 $"模块将创建 {Editors.Count} 个独立 WPF 页面。")
         ];
@@ -310,7 +307,7 @@ public sealed class LastEpochGameAdapter :
             throw new InvalidOperationException("Last Epoch 进程名称不匹配，请重新连接游戏。");
         if (!LastEpochRuntime.IsOfflineProcess(process.ProcessId))
             throw new InvalidOperationException("Last Epoch 专属模块只支持通过“完全离线模式”启动的游戏进程。");
-        LastEpochBuildGuard.EnsureVerifiedProcess(process.ProcessId, process.StartTimeUtc);
+        LastEpochBuildGuard.EnsureCurrentProcess(process.ProcessId, process.StartTimeUtc);
         return new LastEpochRuntime(process.ProcessId);
     }
 }

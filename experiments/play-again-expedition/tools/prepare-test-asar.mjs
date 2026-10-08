@@ -1,0 +1,55 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import path from 'node:path';
+const [runtimeDirectory] = process.argv.slice(2);
+const permittedDirectory = 'D:/MyOtherProjects/GameValueEditor-Modules/artifacts/play-again-expedition/20261007-protection-scroll-test/runtime';
+if (!runtimeDirectory || path.resolve(runtimeDirectory).toLowerCase() !== path.resolve(permittedDirectory).toLowerCase()) throw Error('Refuse any target outside the explicit test copy');
+const resources = path.join(runtimeDirectory, 'resources');
+const archive = path.join(resources, 'app.asar');
+const original = path.join(resources, 'app.asar.original');
+const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex').toUpperCase();
+const bytes = fs.readFileSync(archive);
+const expected = '5E5394C50B67A71CF0965617F850A6DA91484D5BE2D5FEA5A058E1F8D7C68ECB';
+if (hash(bytes) !== expected) throw Error('Only the known original build can be prepared');
+if (fs.existsSync(original) || fs.existsSync(path.join(resources, 'gve-patch-record.json'))) throw Error('Refuse to overwrite an existing test backup or patch');
+const oldHeaderSize = bytes.readUInt32LE(4);
+const oldJsonLength = bytes.readUInt32LE(12);
+const header = JSON.parse(bytes.subarray(16, 16 + oldJsonLength).toString('utf8'));
+const dataStart = 8 + oldHeaderSize;
+const data = bytes.subarray(dataStart);
+const entry = header.files['main.cjs'];
+if (entry.unpacked || !Number.isSafeInteger(Number(entry.offset)) || entry.size !== 243) throw Error('Unexpected loader layout');
+const originalMain = data.subarray(Number(entry.offset), Number(entry.offset) + entry.size).toString('utf8');
+if (!originalMain.includes("module.exports=require('./main.cjs.jsc');")) throw Error('Unexpected main loader');
+const newMain = Buffer.from(originalMain + "\nrequire(require('node:path').join(process.resourcesPath,'materials-bridge.cjs')).start();\n", 'utf8');
+entry.offset = String(data.length);
+entry.size = newMain.length;
+if (entry.integrity) {
+  if (entry.integrity.algorithm !== 'SHA256') throw Error('Unknown entry integrity algorithm');
+  entry.integrity.hash = hash(newMain).toLowerCase();
+  const blockSize = entry.integrity.blockSize;
+  if (!Number.isSafeInteger(blockSize) || blockSize <= 0) throw Error('Unknown integrity block size');
+  entry.integrity.blocks = [];
+  for (let index = 0; index < newMain.length; index += blockSize) entry.integrity.blocks.push(hash(newMain.subarray(index, index + blockSize)).toLowerCase());
+}
+const json = Buffer.from(JSON.stringify(header), 'utf8');
+const padded = Math.ceil(json.length / 4) * 4;
+const headerSize = padded + 8;
+const prefix = Buffer.alloc(8);
+prefix.writeUInt32LE(4, 0);
+prefix.writeUInt32LE(headerSize, 4);
+const newHeader = Buffer.alloc(headerSize);
+newHeader.writeUInt32LE(headerSize - 4, 0);
+newHeader.writeUInt32LE(json.length, 4);
+json.copy(newHeader, 8);
+const patched = Buffer.concat([prefix, newHeader, data, newMain]);
+// All original data bytes stay untouched. Only the main-loader metadata points
+// at the additional text loader; no other entry's data or offsets are changed.
+if (!patched.subarray(8 + headerSize, 8 + headerSize + data.length).equals(data)) throw Error('Original data changed');
+fs.copyFileSync(archive, original, fs.constants.COPYFILE_EXCL);
+const staged = path.join(resources, 'app.asar.gve-staged');
+fs.writeFileSync(staged, patched, { flag: 'wx' });
+fs.renameSync(staged, archive);
+const record = { originalSha256: expected, patchedSha256: hash(patched), changedEntry: 'main.cjs', unchangedOriginalDataBytes: data.length };
+fs.writeFileSync(path.join(resources, 'gve-patch-record.json'), JSON.stringify(record, null, 2), { flag: 'wx' });
+console.log(JSON.stringify(record, null, 2));

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using GameValueEditor.Modules.LastEpoch;
 using GameValueEditor.ModuleSdk;
 
@@ -6,13 +7,6 @@ namespace GameValueEditor.Modules.LiveTests;
 
 public sealed class LastEpochLiveTest : IModuleLiveTest
 {
-    private const string ExpectedExecutableSha256 =
-        "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E";
-    private const string ExpectedGameAssemblySha256 =
-        "66379C9E1B106C7A517AEF1419090ED2565D1C6689C7A6F644A196CE34B2C03D";
-    private const string ExpectedMetadataSha256 =
-        "CE1D015E1162C5529A935A89521F4F3733EB3D37F4CA2DD9688C53C0FC5EAF00";
-
     public string Game => "last-epoch";
 
     public async Task RunAsync(string[] args)
@@ -20,24 +14,34 @@ public sealed class LastEpochLiveTest : IModuleLiveTest
         using var liveProcess = Process.GetProcessesByName("Last Epoch").SingleOrDefault()
                                 ?? throw new InvalidOperationException("Last Epoch is not running.");
         var (process, build) = await LiveTestSupport.CreateContextAsync(liveProcess);
-        LiveTestSupport.Assert(
-            string.Equals(build.ExecutableSha256, ExpectedExecutableSha256, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(build.GameAssemblySha256, ExpectedGameAssemblySha256, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(build.MetadataSha256, ExpectedMetadataSha256, StringComparison.OrdinalIgnoreCase),
-            "The running Last Epoch build is not the exact build being approved for v0.5.4.");
-
         var adapter = new LastEpochGameAdapter();
-        LiveTestSupport.Assert(adapter.Supports(process, build),
-            "Last Epoch v0.5.4 rejected the current offline build during read-only validation.");
-
-        var diagnostics = ((IGameCompatibilityDiagnosticsProvider)adapter)
-            .GetCompatibilityDiagnostics(process, build);
-        LiveTestSupport.Assert(diagnostics.Any(item =>
-                item.DisplayName == "离线进程" && item.Status == GameCompatibilityDiagnosticStatus.Passed) &&
-            diagnostics.Any(item =>
-                item.DisplayName == "IL2CPP 语义结构" && item.Status == GameCompatibilityDiagnosticStatus.Passed) &&
-            diagnostics.Any(item =>
-                item.DisplayName == "已验证构建与固定布局" && item.Status == GameCompatibilityDiagnosticStatus.Passed),
-            "Last Epoch diagnostics did not confirm offline mode, verified build and runtime structure.");
+        LiveTestSupport.Assert(adapter.Supports(process, build), "Updated offline game was not accepted.");
+        LiveTestSupport.Assert(adapter.Supports(process, new("", "", "", "")),
+            "Module still depends on a historical fingerprint whitelist.");
+        var diagnostics = adapter.GetCompatibilityDiagnostics(process, build);
+        LiveTestSupport.Assert(diagnostics.Any(item => item.DisplayName == "IL2CPP 语义结构" &&
+            item.Status == GameCompatibilityDiagnosticStatus.Passed), "Current root resolution failed.");
+        var loaded = adapter.SupportsCharacterAttributes(process);
+        var features = new Dictionary<string, object>();
+        if (loaded)
+        {
+            var character = adapter.ReadCharacters(process).Single();
+            LiveTestSupport.Assert(character.Attributes.Count >= 10 && character.Level > 0, "Current character read was incomplete.");
+            features["character"] = new { character.Level, Fields = character.Attributes.Count,
+                Unavailable = character.Attributes.Where(field => !field.CanWrite).Select(field => new { field.Key, field.Status }).ToArray() };
+            foreach (var editor in adapter.Editors.Where(editor => editor.Id != "game.last-epoch.character-attributes"))
+            {
+                var rows = adapter.ReadEditorEntities(process, editor.Id);
+                if (editor.Id == "game.last-epoch.materials")
+                    LiveTestSupport.Assert(rows.Count > 100 && rows.All(row => row.Fields.All(field => field.Value >= 0)),
+                        "Updated material definitions/counts were incomplete.");
+                if (editor.Id == "game.last-epoch.world")
+                    LiveTestSupport.Assert(rows.Count > 0 && rows.SelectMany(row => row.Fields).All(field => field.Value is >= 20 and <= 120),
+                        "Updated inline camera lens field resolution failed.");
+                features[editor.Id] = new { Rows = rows.Count, Fields = rows.Sum(row => row.Fields.Count) };
+            }
+        }
+        Console.WriteLine(JsonSerializer.Serialize(new { ReadOnly = true, FingerprintWhitelistRequired = false,
+            LoadedCharacter = loaded, build.GameAssemblySha256, build.MetadataSha256, Features = features }));
     }
 }
