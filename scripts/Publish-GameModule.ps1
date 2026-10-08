@@ -123,10 +123,10 @@ if (-not $SkipCatalog) {
         $catalog.modules += $entry
     }
     $existingSnapshots = @()
-    if ($null -ne $entry -and $entry.PSObject.Properties.Name -contains 'releases') {
+    if ($null -ne $entry -and $null -ne $entry.PSObject.Properties['releases']) {
         $existingSnapshots += @($entry.releases)
     }
-    if ($entry.PSObject.Properties.Name -contains 'version' -and
+    if ($null -ne $entry.PSObject.Properties['version'] -and
         -not [string]::IsNullOrWhiteSpace([string]$entry.version) -and
         [string]$entry.version -ne $Version -and
         -not ($existingSnapshots | Where-Object { [string]$_.version -eq [string]$entry.version })) {
