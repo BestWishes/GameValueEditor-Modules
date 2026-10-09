@@ -34,7 +34,7 @@ catalog.json
 
 2026-10-09 远征修复不再依赖旧构建哈希、固定运行时版本或概率列号，已用当前 0.116.73 的实际消费者核验，见[小更新修复记录](games/play-again-expedition/docs/SMALL_UPDATE_LOCAL.md)。此前审查把放置斩魔录误写成不问凡尘，现已纠正：放置斩魔录是 `game.fzzml`，不问凡尘是 `game.worldapart`。
 
-两个模块的本次版本分别为 2.1.5 / 1.3.5：按名称识别，从当前 IL2CPP 元数据定位字段、原生方法与主线程入口，不以历史哈希拒绝小更新。当前两款游戏只读核验、设计/复核和完整离线测试包见[本地修复记录](docs/SMALL_UPDATE_TWO_GAMES_LOCAL.md)。2026-10-09 用户已授权提交和发布；正式资产、目录、保留策略及完整离线包验证状态见[发布记录](docs/RELEASE_FZZML_2_1_5_WORLDAPART_1_3_5.md)。主程序生产代码不变，不另发主程序版本。
+两个模块的本次版本分别为 2.1.5 / 1.3.5：按名称识别，从当前 IL2CPP 元数据定位字段、原生方法与主线程入口，不以历史哈希拒绝小更新。当前两款游戏只读核验、设计/复核和完整离线测试包见[本地修复记录](docs/SMALL_UPDATE_TWO_GAMES_LOCAL.md)。2026-10-09 经用户授权已提交并发布，线上资产和目录独立复验通过，各保留最新三个包；正式资产摘要及新完整离线包见[发布记录](docs/RELEASE_FZZML_2_1_5_WORLDAPART_1_3_5.md)。主程序生产代码不变，不另发主程序版本。
 
 具体功能、线程、保存链路和实机证据只维护在对应游戏目录，不复制到主程序架构文档。
 
@@ -44,7 +44,7 @@ catalog.json
 
 ## 构建
 
-本地接入边界修复的完整离线测试包复用宿主 `scripts/build-complete-offline-bundle.ps1` 的显式 local-review 模式，预装三个目录模块和远征 0.0.5；不修改 catalog 或正式 ZIP。模块/目录 JSON Schema 同步支持可选 `packageSha256`，空 IL2CPP 分量必须由完整包指纹补足，不接受模糊通配。可运行 `./scripts/test-package-build-constraints.ps1` 检查旧原生声明、新包声明和缺值/错误分量；这不是正式发布门禁的替代品。
+此前本地接入边界修复的测试包使用宿主 `scripts/build-complete-offline-bundle.ps1` 的显式 local-review 模式，预装三个目录模块和远征 0.0.5，不修改当时的 catalog 或正式 ZIP。本次完整离线包改用当前四个正式资产输入，仍使用同一构建器，见上方发布记录。模块/目录 JSON Schema 支持可选 `packageSha256`，空 IL2CPP 分量必须由完整包指纹补足，不接受模糊通配。可运行 `./scripts/test-package-build-constraints.ps1` 检查旧原生声明、新包声明和缺值/错误分量；这不是正式发布门禁的替代品。
 
 要求 Windows x64 与 .NET 8 SDK。
 
@@ -78,7 +78,7 @@ API 8 同时提供整页快照：共享背包/人物/实体页及 Last Epoch 资
 
 - 贡献者按整个游戏专属模块展示，不按“背包物品”“人物属性”等编辑模块拆分，也不显示贡献数量或排名。
 - 合并 PR 后，由维护者运行 `scripts/update-contributors.ps1`，根据该 PR 实际修改过的 `games/{短名}` 写入 GitHub 显示名称、主页、首次和最新贡献日期；贡献者不直接编辑 `contributors.generated.json`。
-- 维护者必须运行 `scripts/verify-release.ps1` 校验稳定 ID、精确构建指纹、清单/目录一致性并构建所有模块。模块含可执行代码，因此脚本通过后仍需做安全边界和最小实机读写复核。
+- 维护者必须校验稳定 ID、构建声明与运行时定位能力、清单/目录一致性，并验证实际模块包与页面。`scripts/verify-release.ps1` 可做全仓发行验证；选择性发布只构建修改模块，并将其与未改模块的原正式包一起交给宿主验证，不重打同版本资产。模块含可执行代码，因此脚本通过后仍需做安全边界和最小实机读写复核。
 
 新增游戏或编辑能力前请阅读 [模块扩展规范](docs/MODULE_EXTENSION_GUIDE.md)、[参与维护](CONTRIBUTING.md) 和现有游戏实现说明。
 

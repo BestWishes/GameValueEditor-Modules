@@ -55,4 +55,18 @@
 
 上传通过 `http://127.0.0.1:7897`，没有直连绕过代理、重打包或覆盖旧版本。资产复验之后才运行现有 `Publish-GameModule.ps1 -CatalogOnly` 更新目录，清单/主题、目录属性 8 项及包 Schema 19 项复验通过。新目录保留放置斩魔录 2.1.5/2.1.4/2.1.3、不问凡尘 1.3.5/1.3.4/1.3.3；另两模块目录不变。
 
-服务器目录推送/读取、旧 Release 清理及新完整离线包核验待完成，随后追加实际结果。
+目录提交 `84dc2190eec3e25bb5b074cb4854345e1de6511e` 已推送；读取公开 raw 目录并逐项对比与本地一致，两个新快照均声明 `supportsUnlistedBuildValidation=true`，Host API 8、最低主程序 0.5.1。
+
+保留策略先 `WhatIf` 确认，再实际删除 `fzzml-v2.1.2` / `worldapart-v1.3.2` 的 GitHub Release 及资产。后续公开 API 清单确认这两款各剩最新三个 Release，六个保留资产的大小/SHA-256 全部与目录一致；Last Epoch 三个版本及远征单个版本不变。远端旧 Git 标签仍存在；没有清理本地旧 ZIP 或覆盖已发布资产。
+
+正式输入完整离线包：`D:/MyOtherProjects/GameValueEditor/dist/GameValueEditor-v0.5.2-complete-offline-two-games-20261009-win-x64.zip`，99,445,768 字节。
+
+SHA-256：`1CCFC0B0D050FBB9FFFD4BD2C1348863D02FF0ED4F97284192DCA985765DD5F6`。
+
+包含主程序 0.5.2 / Host API 8、放置斩魔录 2.1.5、不问凡尘 1.3.5、Last Epoch 0.5.6、远征 0.0.6。四个模块 DLL、12 个页面、打包 EXE 启动、包摘要及冻结记录实际验证通过，随后独立 `VerifyOnly` 再通过：`IntegrityVerified / ModulesVerified / StartupVerified / Verified=true`，`IsLatest=true`。`LocalOnly=false` 表示使用正式资产输入，不代表上传了完整离线包；GitHub 只上传两个模块 ZIP，主程序 Release 未变。
+
+冻结收据：`D:/MyOtherProjects/GameValueEditor/artifacts/offline-bundle-receipts/1CCFC0B0D050FBB9FFFD4BD2C1348863D02FF0ED4F97284192DCA985765DD5F6.json`。
+
+原主程序标准 ZIP 摘要仍为 `EFD0280C2C120540111F3D8B7A0DA7232358045DB441D97BF8CF541B8BCC22EA`，旧正式完整包仍为 `88201849676BF059D805836AC37F5F399F6D2FA9FB419DDFE4BA71F84138D0DC`。用户测试过的旧包当前文件名为 `dist/GameValueEditor-v0.5.2.zip`，大小与摘要仍为 99,445,914 / `1628E152E6828FEA116AFE8302FF5291E7000DC7E6F48064FCE3795A58185654`；本次未改名或覆盖该文件。
+
+本次没有操作原游戏、修改玩家数值、存档或启动参数，也没有关机。发布后的文档提交不改变已冻结的模块或主程序源码提交号与二进制。
