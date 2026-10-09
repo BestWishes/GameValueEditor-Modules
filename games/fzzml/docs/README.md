@@ -1,35 +1,43 @@
-# fzzml 模块实现说明
+# 放置斩魔录模块实现说明
 
-稳定游戏 ID：`game.fzzml`，当前模块版本：`2.1.3`。
+稳定游戏 ID：`game.fzzml`。本次版本 `2.1.5`，使用 Host API 8，最低主程序 `0.5.1`。提交、正式资产与目录验证状态见[发布记录](../../../docs/RELEASE_FZZML_2_1_5_WORLDAPART_1_3_5.md)。
 
-本版本使用 Host API 7。背包和人物属性页面均由本模块程序集创建，并使用宿主提供的主题资源与间距；宿主只承载导航、视觉系统、生命周期和公共弹框/保存字段服务，页面布局不由 `Kind`/`Role` 模板决定。游戏定位、主线程写入和保存链路未改变。
+背包和人物页面由模块创建，使用宿主主题与公共协调接口；主程序不包含本游戏的类型、字段、地址或保存规则。
 
-实机验证代码位于同游戏目录的 `tests/FzzmlLiveTest.cs`，由仓库通用运行器执行：
+## 小更新识别与定位
 
-```powershell
-dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Modules.LiveTests.csproj -- --game=fzzml
-```
+游戏身份按“放置斩魔录 / fzzml”名称识别，不以历史 EXE、GameAssembly 或 metadata 哈希禁用功能。`compatibleBuilds` 是历史记录，`supportsUnlistedBuildValidation` 声明当前运行元数据解析能力。
+
+模块从实际加载的 GameAssembly 导出查询当前程序集、完整类型名、字段类型/偏移以及完整方法签名。程序集拆分可按唯一完整类型名重新定位；不沿用旧 RVA、旧快照偏移或旧主线程序言。仅缓存当前进程实例的元数据（PID、启动时间、加载模块路径/地址），不缓存人物、背包对象或跨启动地址。
+
+只读数据不依赖保存方法。写入时才解析所需原生刷新和保存调用；字段或调用签名真的改变时报告具体缺失项，不把它说成整个游戏名称不匹配。
 
 ## 背包物品
 
-编辑器 ID：`game.fzzml.inventory`。
+编辑器 ID：`game.fzzml.inventory`。原语义键保持物品名，不改变已有快捷入口。
 
-每次从 `SaveManager._cachedSnapshot -> AllParsedData.inventoryRows` 读取 `List<List<string>>`，按物品名聚合数量。写入在 Unity 主线程创建新的 IL2CPP 数量字符串、替换目标行、重建缓存并调用 `SaveInventory2D_Binary`，随后重新定位并回读总数。超过 9999 的值不由模块拆栈，交给游戏后台逻辑处理。
+从 `SaveManager._cachedSnapshot -> AllParsedData.inventoryRows` 读取 `List<List<string>>`，按物品名聚合数量。所有字段由当前元数据定位。修改在 Unity 主线程创建新数量字符串并使用写屏障替换匹配元素，不更改共享字符串内容；随后重建缓存、调用原生保存流程并回读。超过 9999 的数值仍交由游戏后台处理，不另造拆栈规则。
+
+操作进入主线程前后核对当前快照、背包和目标数量字符串引用，避免存档切换后写旧对象。超时不自动重试；可能仍在执行的跳板内存保留到游戏退出。
 
 ## 人物属性
 
 编辑器 ID：`game.fzzml.character-attributes`，`SessionOnly = true`。
 
-从 `playerDefault.units` 枚举人物，以 `UnitSlotData.unitId` 为稳定身份。开放根骨、力道、神识、身法、体魄五项白名单。写入时读取当前原始值和当前 `PlayerUnitConfig` 基础值，以 `newBase = oldBase + targetRaw - currentRaw` 保持等级、成长和境界部分不变，然后在 Unity 主线程调用 `PlayerAttributeAggregator.Compute` 与 `PlayerAttributeEventHub.RaiseAttributesChanged`。
+从 `playerDefault.units` 枚举人物，以 `UnitSlotData.unitId` 为身份；保留根骨、力道、神识、身法、体魄五项。字段和 `PlayerUnitConfig`、聚合器、事件调用均解析当前元数据。
 
-修改立即反映到游戏，但不写存档。关闭或重启游戏后恢复，不锁定，不自动重应用。
+写入以 `newBase = oldBase + targetRaw - currentRaw` 保留等级、成长和境界部分，Unity 主线程执行 `PlayerAttributeAggregator.Compute` 与 `PlayerAttributeEventHub.RaiseAttributesChanged`。仍只影响本次运行，不写人物存档；重启恢复，不锁定、不自动重应用。
 
-## 当前人物构建
+## 本地验证
 
-只读诊断分别报告三文件构建、背包物品构建支持和人物属性构建支持。清单中的两个旧布局仅支持背包，其人物属性项显示 Warning，不再因为页面已注册而显示“兼容通过”。页面注册项是 Information；构建支持并不表示诊断已执行读写。本次只调整诊断，没有修改业务写入或执行实机验证。
+2026-10-09 更新后的游戏读取成功：10 个人物及背包物品；当前快照偏移已由旧 `0x1A8` 自动解析为 `0x1B0`。背包类型数随正常游玩变化，不作为固定数量断言。已定位背包保存/刷新、人物配置/聚合/事件完整签名及五项字段；错误类型和错误重载被拒绝，没有写入玩家数值或调用保存。
 
-- EXE：`8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD`
-- GameAssembly：`BF156D35DDB79839797517BC95BC07080DAACDCF78D08579B7D0D4C09386D752`
-- metadata：`AEB09A9D3C8359F54C2DF29F3045C5AE1D9270DC269EC0A8E18C0D359CE4CD29`
+回归入口（默认只做本测试进程的合成函数测试；两项参数仅读取已运行游戏）：
 
-历史实机验证：背包读取成功；人物枚举 10 人，每人 5 项属性；同值主线程写入成功；先前的玄道力道实验从界面 506 调整到 1036，重启后恢复 506。此为已有证据，非本次新验证。
+```powershell
+dotnet run --project tests/GameValueEditor.Modules.CompatibilityTests -c Release -- --read-only-fzzml --read-only-worldapart
+```
+
+完整设计、三遍检查与离线包证据见 [本地修复记录](../../../docs/SMALL_UPDATE_TWO_GAMES_LOCAL.md)。当前读出/方法定位不能替代实际修改及重启持久化测试。
+
+历史实机证据：10 人、每人 5 项，同值主线程写入；玄道力道从界面 506 调到 1036，重启恢复 506。这是先前验证，不是本次新写入证据。原 `tests/FzzmlLiveTest.cs` 会调用写入，不属于上述只读检查。

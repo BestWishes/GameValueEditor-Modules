@@ -5,37 +5,24 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using GameValueEditor.ModuleSdk;
+using GameValueEditor.Modules.Runtime;
 
 namespace GameValueEditor.Modules.Fzzml;
 
 public sealed partial class FzzmlGameAdapter
 {
     private const string CharacterEditorId = "game.fzzml.character-attributes";
-    private const string CharacterBuildAssembly = "BF156D35DDB79839797517BC95BC07080DAACDCF78D08579B7D0D4C09386D752";
-    private const string CharacterBuildMetadata = "AEB09A9D3C8359F54C2DF29F3045C5AE1D9270DC269EC0A8E18C0D359CE4CD29";
-
     private static readonly AttributeLayout[] CharacterAttributes =
     [
-        new("constitution", "根骨", 0x4C, 0x44, 0x68, 0x10),
-        new("strength", "力道", 0x50, 0x48, 0x60, 0x14),
-        new("spirit", "神识", 0x54, 0x4C, 0x70, 0x18),
-        new("agility", "身法", 0x58, 0x50, 0x64, 0x1C),
-        new("vitality", "体魄", 0x5C, 0x54, 0x6C, 0x20)
+        new("constitution", "根骨"),
+        new("strength", "力道"),
+        new("spirit", "神识"),
+        new("agility", "身法"),
+        new("vitality", "体魄")
     ];
 
-    public bool SupportsCharacterAttributes(GameProcessContext process)
-    {
-        try
-        {
-            var layout = ResolveLayout(process);
-            return string.Equals(layout.GameAssemblySha256, CharacterBuildAssembly, StringComparison.OrdinalIgnoreCase) &&
-                   string.Equals(layout.MetadataSha256, CharacterBuildMetadata, StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    public bool SupportsCharacterAttributes(GameProcessContext process) =>
+        Il2CppRuntimeResolver.IsNamedGame(process, "fzzml", "放置斩魔录");
 
     public IReadOnlyList<AdapterCharacterItem> ReadCharacters(GameProcessContext process)
     {
@@ -44,7 +31,7 @@ public sealed partial class FzzmlGameAdapter
 
         lock (WriteGate)
         {
-            using var session = new CharacterSession(process.ProcessId, ResolveLayout(process));
+            using var session = new CharacterSession(process);
             return session.ReadCharacters();
         }
     }
@@ -65,7 +52,7 @@ public sealed partial class FzzmlGameAdapter
 
         lock (WriteGate)
         {
-            using var session = new CharacterSession(process.ProcessId, ResolveLayout(process));
+            using var session = new CharacterSession(process);
             return session.WriteCharacterAttribute(characterId, attribute, targetValue);
         }
     }
@@ -84,43 +71,39 @@ public sealed partial class FzzmlGameAdapter
     private sealed class CharacterSession : IDisposable
     {
         private const uint ProcessAccess = 0x0002 | 0x0008 | 0x0010 | 0x0020 | 0x0400;
-        private const uint MemCommitReserve = 0x1000 | 0x2000;
         private const uint MemRelease = 0x8000;
         private const uint PageExecuteReadWrite = 0x40;
-        private const uint Infinite = 0xFFFFFFFF;
-        private const ulong ConfigManagerGetInstance = 0x6B9A00;
-        private const ulong PlayerAttributeAggregatorCompute = 0x328300;
-        private const ulong PlayerAttributeEventHubRaise = 0x32BD90;
-        private const ulong TryGetUnitConfigById = 0x51C230;
-
         private readonly Process _process;
         private readonly IntPtr _handle;
         private readonly ulong _moduleBase;
         private readonly ulong _saveManager;
         private readonly ulong _stringNew;
         private readonly BuildLayout _layout;
+        private readonly Il2CppRuntimeResolver _runtime;
 
-        public CharacterSession(int processId, BuildLayout layout)
+        public CharacterSession(GameProcessContext context)
         {
-            _layout = layout;
-            _process = Process.GetProcessById(processId);
-            var module = _process.Modules.Cast<ProcessModule>().SingleOrDefault(candidate =>
-                string.Equals(candidate.ModuleName, "GameAssembly.dll", StringComparison.OrdinalIgnoreCase))
-                ?? throw new InvalidOperationException("目标进程没有加载 GameAssembly.dll。");
-            _moduleBase = unchecked((ulong)module.BaseAddress.ToInt64());
-            _handle = OpenProcess(ProcessAccess, false, processId);
-            if (_handle == IntPtr.Zero)
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "无法连接 fzzml 进程。可以尝试以管理员身份运行本应用。");
-
-            var exports = PortableExportResolver.Read(module.FileName);
-            _stringNew = _moduleBase + exports.GetRequired("il2cpp_string_new");
-            _saveManager = CallPointerFunction(
-                _moduleBase + exports.GetRequired("il2cpp_domain_get"),
-                _moduleBase + exports.GetRequired("il2cpp_thread_attach"),
-                _moduleBase + exports.GetRequired("il2cpp_thread_detach"),
-                _moduleBase + _layout.SaveManagerGetInstance);
-            if (_saveManager == 0) throw new InvalidOperationException("SaveManager.Instance 尚未就绪，请进入存档后重试。");
+            _process = Process.GetProcessById(context.ProcessId);
+            _handle = OpenProcess(ProcessAccess, false, context.ProcessId);
+            if (_handle == IntPtr.Zero) { _process.Dispose(); throw new Win32Exception(Marshal.GetLastWin32Error()); }
+            try
+            {
+                _runtime = new Il2CppRuntimeResolver(context);
+                _moduleBase = _runtime.ModuleBase;
+                _layout = new BuildLayout(_runtime);
+                _stringNew = _runtime.Export("il2cpp_string_new");
+                _saveManager = _runtime.Call(_moduleBase + _layout.SaveManagerGetInstance);
+                if (_saveManager == 0) throw new InvalidOperationException("当前存档尚未加载，请进入存档后刷新。");
+            }
+            catch { _runtime?.Dispose(); CloseHandle(_handle); _process.Dispose(); throw; }
         }
+
+        private ulong CharacterMethod(string ns, string klass, string method, string result, params string[] args) =>
+            _runtime.Method("Assembly-CSharp.dll", ns, klass, method, true, result, args).Pointer;
+        private const string ConfigType = "Script.ScriptTableObj.Player.PlayerUnitConfig";
+        private const string ConfigManagerType = "Script.Manager.Core.ConfigManager";
+        private const string SaveType = "Script.Manager.Save.SaveManager";
+        private const string AggregateType = "Script.Player.Listen.AggregatedAttributes";
 
         public IReadOnlyList<AdapterCharacterItem> ReadCharacters()
         {
@@ -141,13 +124,13 @@ public sealed partial class FzzmlGameAdapter
                 ?? throw new InvalidOperationException($"当前存档没有找到人物“{characterId}”。");
             var currentRaw = slot.RawValues[attribute.Key];
             var before = ExecuteCharacterOperation(characterId, null);
-            var oldBase = ReadInt32(before.ConfigAddress + attribute.ConfigBaseOffset);
+            var oldBase = _runtime.ReadInt(_runtime.Address(before.ConfigAddress, attribute.Key, "System.Int32"));
             var newBaseLong = (long)oldBase + targetValue - currentRaw;
             if (newBaseLong is < int.MinValue or > int.MaxValue)
                 throw new InvalidOperationException("目标属性超出游戏可表达的 Int32 范围。");
 
             var after = ExecuteCharacterOperation(characterId,
-                new CharacterWrite(attribute.ConfigBaseOffset, oldBase, (int)newBaseLong));
+                new CharacterWrite(_runtime.Field(_runtime.ObjectClass(before.ConfigAddress), attribute.Key, "System.Int32"), oldBase, (int)newBaseLong));
             var updatedSlot = slot with
             {
                 RawValues = slot.RawValues.ToDictionary(
@@ -166,12 +149,12 @@ public sealed partial class FzzmlGameAdapter
         {
             var allData = ReadUInt64(_saveManager + _layout.SaveManagerSnapshotOffset);
             if (allData == 0) throw new InvalidOperationException("当前存档快照尚未加载。");
-            var playerDefault = ReadUInt64(allData + 0x28);
+            var playerDefault = _runtime.Reference(allData, "playerDefault", "Script.Player.Save.PlayerSaveData");
             if (playerDefault == 0) throw new InvalidOperationException("当前人物存档尚未加载。");
-            var units = ReadUInt64(playerDefault + 0x30);
+            var units = _runtime.Reference(playerDefault, "units", "System.Collections.Generic.List<Script.Player.Save.PlayerSaveData/UnitSlotData>");
             if (units == 0) throw new InvalidOperationException("当前人物列表尚未加载。");
-            var array = ReadUInt64(units + 0x10);
-            var count = ReadInt32(units + 0x18);
+            var array = _runtime.ListItems(units);
+            var count = _runtime.ListCount(units);
             if (array == 0 || count is < 0 or > 10_000)
                 throw new InvalidDataException($"人物列表结构无效（数量 {count}）。");
 
@@ -180,21 +163,21 @@ public sealed partial class FzzmlGameAdapter
             {
                 var address = ReadUInt64(array + 0x20UL + (ulong)index * 8UL);
                 if (address == 0) continue;
-                var characterId = ReadManagedString(ReadUInt64(address + 0x10));
+                var characterId = ReadManagedString(_runtime.Reference(address, "unitId", "System.String"));
                 if (string.IsNullOrWhiteSpace(characterId)) continue;
-                var displayName = ReadManagedString(ReadUInt64(address + 0x18));
+                var displayName = ReadManagedString(_runtime.Reference(address, "displayName", "System.String"));
                 var rawValues = CharacterAttributes.ToDictionary(
                     item => item.Key,
-                    item => ReadInt32(address + item.SlotValueOffset),
+                    item => _runtime.ReadInt(_runtime.Address(address, item.Key, "System.Int32")),
                     StringComparer.Ordinal);
                 var growthValues = CharacterAttributes.ToDictionary(
                     item => item.Key,
-                    item => ReadSingle(address + item.SlotGrowthOffset),
+                    item => ReadSingle(_runtime.Address(address, "growth" + char.ToUpperInvariant(item.Key[0]) + item.Key[1..], "System.Single")),
                     StringComparer.Ordinal);
                 result.Add(new CharacterSlot(
                     characterId,
                     string.IsNullOrWhiteSpace(displayName) ? characterId : displayName,
-                    ReadInt32(address + 0x38),
+                    _runtime.ReadInt(_runtime.Address(address, "level", "System.Int32")),
                     rawValues,
                     growthValues));
             }
@@ -216,11 +199,12 @@ public sealed partial class FzzmlGameAdapter
         private CharacterOperationResult ExecuteCharacterOperation(string characterId, CharacterWrite? write)
         {
             var hookAddress = _moduleBase + _layout.ExecuteTasks;
-            var original = Read(hookAddress, _layout.ExpectedHookPrologue.Length);
-            if (!original.AsSpan().SequenceEqual(_layout.ExpectedHookPrologue))
-                throw new InvalidDataException("游戏主线程入口与受支持版本不一致，已拒绝人物属性操作。");
+            var expected = _layout.ExpectedHookPrologue;
+            var original = Read(hookAddress, expected.Length);
+            if (!original.AsSpan().SequenceEqual(expected))
+                throw new InvalidDataException("游戏主线程入口正在变化，请稍后重试；未执行人物属性操作。");
 
-            var remote = Allocate(4096);
+            var remote = Il2CppMainThreadHook.AllocateNear(_handle, hookAddress, 4096);
             var remoteBase = unchecked((ulong)remote.ToInt64());
             var unitText = remoteBase + 0x800;
             var unitString = remoteBase + 0x900;
@@ -236,7 +220,7 @@ public sealed partial class FzzmlGameAdapter
                 Write(unitText, Encoding.UTF8.GetBytes(characterId + "\0"));
                 var code = BuildCharacterTrampoline(
                     hookAddress,
-                    _moduleBase + _layout.InitializationFlag,
+                    remoteBase + 0x600,
                     unitText,
                     unitString,
                     config,
@@ -244,18 +228,21 @@ public sealed partial class FzzmlGameAdapter
                     aggregate,
                     status,
                     _stringNew,
-                    _moduleBase + TryGetUnitConfigById,
-                    _moduleBase + ConfigManagerGetInstance,
-                    _moduleBase + PlayerAttributeAggregatorCompute,
-                    _moduleBase + PlayerAttributeEventHubRaise,
+                    CharacterMethod("Script.Manager.UI.CharacterMenu", "CharacterMenuRealmManager", "TryGetUnitConfigById", "System.Boolean", "System.String", ConfigType + "&"),
+                    CharacterMethod("Script.Manager.Core", "ConfigManager", "get_Instance", ConfigManagerType),
+                    CharacterMethod("Script.Player.Listen", "PlayerAttributeAggregator", "Compute", AggregateType, "System.String", SaveType, ConfigManagerType),
+                    write == null ? 0 : CharacterMethod("Script.Player.Listen", "PlayerAttributeEventHub", "RaiseAttributesChanged", "System.Void", "System.String", AggregateType),
                     _saveManager,
                     write);
+                if (code.Length >= 0x600) throw new InvalidDataException("人物操作代码超出缓冲区。");
+                Write(remoteBase + 0x600, Il2CppMainThreadHook.Relocate(original, hookAddress, remoteBase + 0x600));
                 Write(remoteBase, code);
                 if (!VirtualProtectEx(_handle, (IntPtr)(long)hookAddress, (nuint)original.Length,
                         PageExecuteReadWrite, out oldProtection))
                     throw new Win32Exception(Marshal.GetLastWin32Error(), "无法临时写入游戏主线程入口。");
-                Write(hookAddress, BuildAbsoluteJump(remoteBase, original.Length));
+                canFreeRemote = false;
                 patched = true;
+                Il2CppMainThreadHook.WritePatch(_process, _handle, hookAddress, Il2CppMainThreadHook.Jump(remoteBase, original.Length));
                 FlushInstructionCache(_handle, (IntPtr)(long)hookAddress, (nuint)original.Length);
 
                 var stopwatch = Stopwatch.StartNew();
@@ -267,7 +254,7 @@ public sealed partial class FzzmlGameAdapter
                 }
                 if (state is 0 or 2)
                 {
-                    canFreeRemote = state == 0;
+                    canFreeRemote = false;
                     throw new TimeoutException(state == 2
                         ? "游戏主线程已进入人物属性操作，但未在五秒内完成。"
                         : "游戏主线程五秒内没有执行人物属性操作。");
@@ -287,7 +274,7 @@ public sealed partial class FzzmlGameAdapter
             {
                 if (patched)
                 {
-                    Write(hookAddress, original);
+                    Il2CppMainThreadHook.WritePatch(_process, _handle, hookAddress, original);
                     FlushInstructionCache(_handle, (IntPtr)(long)hookAddress, (nuint)original.Length);
                 }
                 if (oldProtection != 0)
@@ -299,45 +286,9 @@ public sealed partial class FzzmlGameAdapter
         private AggregatedFiveDimensions ReadAggregatedFiveDimensions(ulong address) =>
             new(CharacterAttributes.ToDictionary(
                 item => item.Key,
-                item => ReadInt32(address + item.AggregatedOffset),
+                item => _runtime.ReadInt(_runtime.Address(address, item.Key, "System.Int32")),
                 StringComparer.Ordinal));
 
-        private ulong CallPointerFunction(ulong domainGet, ulong threadAttach, ulong threadDetach, ulong target)
-        {
-            var result = Allocate(8);
-            var codeAddress = Allocate(256);
-            try
-            {
-                var code = new CharacterEmitter();
-                code.Emit(0x53, 0x48, 0x83, 0xEC, 0x20);
-                code.MovRax(domainGet); code.CallRax();
-                code.Emit(0x48, 0x89, 0xC1);
-                code.MovRax(threadAttach); code.CallRax();
-                code.Emit(0x48, 0x89, 0xC3, 0x33, 0xC9, 0x33, 0xD2);
-                code.MovRax(target); code.CallRax();
-                code.MovRdx(unchecked((ulong)result.ToInt64())); code.Emit(0x48, 0x89, 0x02);
-                code.Emit(0x48, 0x89, 0xD9);
-                code.MovRax(threadDetach); code.CallRax();
-                code.Emit(0x33, 0xC0, 0x48, 0x83, 0xC4, 0x20, 0x5B, 0xC3);
-                Write(unchecked((ulong)codeAddress.ToInt64()), code.ToArray());
-                var thread = CreateRemoteThread(_handle, IntPtr.Zero, 0, codeAddress, IntPtr.Zero, 0, out _);
-                if (thread == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error(), "无法创建 IL2CPP 查询线程。");
-                try
-                {
-                    if (WaitForSingleObject(thread, Infinite) != 0) throw new InvalidOperationException("等待 IL2CPP 查询线程失败。");
-                }
-                finally
-                {
-                    CloseHandle(thread);
-                }
-                return ReadUInt64(unchecked((ulong)result.ToInt64()));
-            }
-            finally
-            {
-                VirtualFreeEx(_handle, result, 0, MemRelease);
-                VirtualFreeEx(_handle, codeAddress, 0, MemRelease);
-            }
-        }
 
         private string ReadManagedString(ulong address)
         {
@@ -347,12 +298,6 @@ public sealed partial class FzzmlGameAdapter
             return Encoding.Unicode.GetString(Read(address + 0x14, checked(length * 2)));
         }
 
-        private IntPtr Allocate(int size)
-        {
-            var address = VirtualAllocEx(_handle, IntPtr.Zero, (nuint)size, MemCommitReserve, PageExecuteReadWrite);
-            if (address == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error(), "无法在目标进程分配临时内存。");
-            return address;
-        }
 
         private int ReadInt32(ulong address) => BitConverter.ToInt32(Read(address, 4));
         private ulong ReadUInt64(ulong address) => BitConverter.ToUInt64(Read(address, 8));
@@ -360,6 +305,7 @@ public sealed partial class FzzmlGameAdapter
 
         private byte[] Read(ulong address, int count)
         {
+            _runtime.CheckAlive();
             var bytes = new byte[count];
             if (!ReadProcessMemory(_handle, (IntPtr)(long)address, bytes, (nuint)count, out var read) || read != (nuint)count)
                 throw new Win32Exception(Marshal.GetLastWin32Error(), $"读取目标内存失败：0x{address:X}。");
@@ -368,12 +314,14 @@ public sealed partial class FzzmlGameAdapter
 
         private void Write(ulong address, byte[] bytes)
         {
+            _runtime.CheckAlive();
             if (!WriteProcessMemory(_handle, (IntPtr)(long)address, bytes, (nuint)bytes.Length, out var written) || written != (nuint)bytes.Length)
                 throw new Win32Exception(Marshal.GetLastWin32Error(), $"写入目标内存失败：0x{address:X}。");
         }
 
         public void Dispose()
         {
+            _runtime.Dispose();
             if (_handle != IntPtr.Zero) CloseHandle(_handle);
             _process.Dispose();
         }
@@ -381,7 +329,7 @@ public sealed partial class FzzmlGameAdapter
 
     private static byte[] BuildCharacterTrampoline(
         ulong hookAddress,
-        ulong initializationFlagAddress,
+        ulong continuationAddress,
         ulong unitText,
         ulong unitString,
         ulong configResult,
@@ -397,13 +345,6 @@ public sealed partial class FzzmlGameAdapter
         CharacterWrite? write)
     {
         var code = new CharacterEmitter();
-        code.MovRax(statusAddress);
-        code.Emit(0x83, 0x38, 0x00);
-        var alreadyExecuted = code.EmitNearConditionalJump(0x85);
-        code.Emit(0x9C, 0x50, 0x51, 0x52, 0x41, 0x50, 0x41, 0x51, 0x41, 0x52, 0x41, 0x53);
-        code.Emit(0x48, 0x83, 0xEC, 0x48);
-        code.MovRdx(statusAddress); code.Emit(0xC7, 0x02, 0x02, 0x00, 0x00, 0x00);
-
         code.MovRcx(unitText); code.MovRax(stringNew); code.CallRax();
         code.MovRdx(unitString); code.Emit(0x48, 0x89, 0x02);
         code.MovRax(unitString); code.Emit(0x48, 0x8B, 0x08);
@@ -416,10 +357,10 @@ public sealed partial class FzzmlGameAdapter
         if (write is not null)
         {
             code.MovRax(configResult); code.Emit(0x48, 0x8B, 0x00);
-            code.Emit(0x81, 0x78, checked((byte)write.ConfigOffset));
+            code.Emit(0x81, 0xB8); code.Emit(BitConverter.GetBytes(checked((int)write.ConfigOffset)));
             code.Emit(BitConverter.GetBytes(write.ExpectedBase));
             mismatch = code.EmitNearConditionalJump(0x85);
-            code.Emit(0xC7, 0x40, checked((byte)write.ConfigOffset));
+            code.Emit(0xC7, 0x80); code.Emit(BitConverter.GetBytes(checked((int)write.ConfigOffset)));
             code.Emit(BitConverter.GetBytes(write.NewBase));
         }
 
@@ -465,32 +406,7 @@ public sealed partial class FzzmlGameAdapter
         code.PatchNearJump(success, cleanup);
         code.PatchNearJump(noConfigCleanup, cleanup);
         if (mismatchCleanup >= 0) code.PatchNearJump(mismatchCleanup, cleanup);
-        code.Emit(0x48, 0x83, 0xC4, 0x48);
-        code.Emit(0x41, 0x5B, 0x41, 0x5A, 0x41, 0x59, 0x41, 0x58, 0x5A, 0x59, 0x58, 0x9D);
-
-        var fastPath = code.Position;
-        code.PatchNearJump(alreadyExecuted, fastPath);
-        code.Emit(0x48, 0x83, 0xEC, 0x28);
-        code.MovRax(initializationFlagAddress);
-        code.Emit(0x80, 0x38, 0x00);
-        var initialized = code.EmitNearConditionalJump(0x85);
-        code.MovRax(hookAddress + 13); code.JumpRax();
-        var initializedPath = code.Position;
-        code.PatchNearJump(initialized, initializedPath);
-        code.MovRax(hookAddress + 0x20); code.JumpRax();
-        return code.ToArray();
-    }
-
-    private static byte[] BuildAbsoluteJump(ulong target, int length)
-    {
-        if (length < 12) throw new ArgumentOutOfRangeException(nameof(length));
-        var patch = Enumerable.Repeat((byte)0x90, length).ToArray();
-        patch[0] = 0x48;
-        patch[1] = 0xB8;
-        BitConverter.GetBytes(target).CopyTo(patch, 2);
-        patch[10] = 0xFF;
-        patch[11] = 0xE0;
-        return patch;
+        return Il2CppMainThreadHook.Wrap(code.ToArray(), statusAddress, continuationAddress);
     }
 
     private sealed class CharacterEmitter
@@ -522,13 +438,7 @@ public sealed partial class FzzmlGameAdapter
         public byte[] ToArray() => _bytes.ToArray();
     }
 
-    private sealed record AttributeLayout(
-        string Key,
-        string DisplayName,
-        ulong SlotValueOffset,
-        ulong ConfigBaseOffset,
-        ulong SlotGrowthOffset,
-        ulong AggregatedOffset);
+    private sealed record AttributeLayout(string Key, string DisplayName);
 
     private sealed record CharacterSlot(
         string CharacterId,

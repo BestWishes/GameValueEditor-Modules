@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework><UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../games/fzzml/GameValueEditor.Modules.Fzzml.csproj" />
+    <ProjectReference Include="../../games/worldapart/GameValueEditor.Modules.WorldApart.csproj" />
+    <Compile Include="../../shared/Il2CppRuntimeResolver.cs" Link="Runtime/Il2CppRuntimeResolver.cs" />
+    <Compile Include="../../shared/Il2CppMainThreadHook.cs" Link="Runtime/Il2CppMainThreadHook.cs" />
+    <PackageReference Include="Iced" Version="1.21.0" GeneratePathProperty="true" />
+  </ItemGroup>
+</Project>

@@ -9,13 +9,16 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>GameValueEditor.Modules.WorldApart</AssemblyName>
     <RootNamespace>GameValueEditor.Modules.WorldApart</RootNamespace>
-    <ModuleVersion Condition="'$(ModuleVersion)' == ''">1.3.4</ModuleVersion>
+    <ModuleVersion Condition="'$(ModuleVersion)' == ''">1.3.5</ModuleVersion>
     <Version>$(ModuleVersion)</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\sdk\GameValueEditor.ModuleSdk\GameValueEditor.ModuleSdk.csproj" Private="false" />
     <Compile Include="..\..\shared\ModuleEditorPages.cs" Link="src\Shared\ModuleEditorPages.cs" />
+    <Compile Include="..\..\shared\Il2Cpp*.cs" Link="src\Shared\%(Filename)%(Extension)" />
+    <PackageReference Include="Iced" Version="1.21.0" GeneratePathProperty="true" />
+    <EmbeddedResource Include="$(PkgIced)\lib\netstandard2.1\Iced.dll" LogicalName="ModuleRuntime.Iced.dll" />
     <None Include="module.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

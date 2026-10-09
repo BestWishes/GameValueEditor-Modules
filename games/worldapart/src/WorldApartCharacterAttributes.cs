@@ -66,18 +66,8 @@ public sealed partial class WorldApartGameAdapter
         [5] = "土灵根"
     };
 
-    public bool SupportsCharacterAttributes(GameProcessContext process)
-    {
-        try
-        {
-            _ = ResolveLayout(process);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    public bool SupportsCharacterAttributes(GameProcessContext process) =>
+        GameValueEditor.Modules.Runtime.Il2CppRuntimeResolver.IsNamedGame(process, "WorldApart", "不问凡尘");
 
     public IReadOnlyList<AdapterCharacterItem> ReadCharacters(GameProcessContext process)
     {
@@ -85,7 +75,7 @@ public sealed partial class WorldApartGameAdapter
             throw new InvalidOperationException("当前 WorldApart 构建尚未支持人物属性编辑。");
         lock (WriteGate)
         {
-            using var session = new Session(process, ResolveLayout(process));
+            using var session = new Session(process);
             return [session.ReadCharacter()];
         }
     }
@@ -104,7 +94,7 @@ public sealed partial class WorldApartGameAdapter
 
         lock (WriteGate)
         {
-            using var session = new Session(process, ResolveLayout(process));
+            using var session = new Session(process);
             return session.WriteCharacterAttribute(attributeKey, targetValue);
         }
     }
@@ -160,14 +150,15 @@ public sealed partial class WorldApartGameAdapter
                         targetValue);
                     break;
                 case CharacterAttributeKind.SpiritRoot:
-                    var spiritRootDictionary = ReadUInt64(location.Owner + 0x28);
+                    var spiritRootDictionary = _runtime.Reference(location.Owner, "<SpiritRootPoints>k__BackingField", "System.Collections.Generic.Dictionary<System.Int32,System.Int32>");
                     request = new MainThreadRequest(
                         [],
                         MainThreadOperation.SetSpiritRoot,
                         location.Owner,
                         location.AttributeId,
                         targetValue,
-                        ResolveMethodFromObject(spiritRootDictionary, "set_Item", 2));
+                        ResolveMethodFromObject(spiritRootDictionary, "set_Item", 2),
+                        spiritRootDictionary);
                     break;
                 default:
                     throw new InvalidOperationException($"不支持的人物属性写入方式：{location.Kind}。");
@@ -190,18 +181,18 @@ public sealed partial class WorldApartGameAdapter
         {
             var attributes = new List<AdapterCharacterAttribute>();
             var locations = new Dictionary<string, CharacterAttributeLocation>(StringComparer.Ordinal);
-            var playerName = ReadManagedString(ReadUInt64(_player + 0x38));
+            var playerName = ReadManagedString(_runtime.Reference(_player, "playerName", "System.String"));
             if (string.IsNullOrWhiteSpace(playerName)) playerName = "当前玩家";
 
-            var talent = ReadUInt64(_player + 0x70);
+            var talent = _runtime.Reference(_player, "talentPath", "Game.Model.Player.Components.TalentPathModel");
             if (talent != 0)
             {
                 AddDirectAttribute(attributes, locations,
-                    "talent.path-points", "资源 · 道途点", talent + 0x18, talent, ReadInt32(talent + 0x18));
+                    "talent.path-points", "资源 · 道途点", _runtime.Address(talent, "<PathPoints>k__BackingField", "System.Int32"), talent, ReadInt32(_runtime.Address(talent, "<PathPoints>k__BackingField", "System.Int32")));
                 AddDirectAttribute(attributes, locations,
-                    "talent.spirit-point-remain", "资源 · 灵根点", talent + 0x30, talent, ReadInt32(talent + 0x30));
+                    "talent.spirit-point-remain", "资源 · 灵根点", _runtime.Address(talent, "<SpiritPointRemain>k__BackingField", "System.Int32"), talent, ReadInt32(_runtime.Address(talent, "<SpiritPointRemain>k__BackingField", "System.Int32")));
 
-                var roots = ReadIntDictionary(ReadUInt64(talent + 0x28), "五行灵根字典");
+                var roots = ReadIntDictionary(_runtime.Reference(talent, "<SpiritRootPoints>k__BackingField", "System.Collections.Generic.Dictionary<System.Int32,System.Int32>"), "五行灵根字典");
                 foreach (var pair in SpiritRootNames.OrderBy(pair => pair.Key))
                 {
                     var value = roots.TryGetValue(pair.Key, out var stored) ? stored.Value : 0;
@@ -213,7 +204,7 @@ public sealed partial class WorldApartGameAdapter
                 }
             }
 
-            var interact = ReadIntDictionary(ReadUInt64(_player + 0x1A8), "探索属性字典");
+            var interact = ReadIntDictionary(_runtime.Reference(_player, "interactAttributes", "System.Collections.Generic.Dictionary<LubanDatas.TbInteractAttributeId,System.Int32>"), "探索属性字典");
             var interactNames = ReadAllInteractAttributeNames();
             foreach (var pair in interactNames.OrderBy(pair => pair.Key))
             {
@@ -225,18 +216,18 @@ public sealed partial class WorldApartGameAdapter
                     CharacterAttributeKind.Interact, stored?.ValueAddress ?? 0, _player, pair.Key);
             }
 
-            var combat = ReadUInt64(_player + 0x48);
+            var combat = _runtime.Reference(_player, "combat", "Game.Model.Player.Components.CombatModel");
             var layer = 0;
             if (combat != 0)
             {
-                layer = ReadInt32(combat + 0x60);
-                var baseAttributes = ReadFloatDictionary(ReadUInt64(combat + 0x20), "战斗基础属性字典");
-                var growthAttributes = ReadFloatDictionary(ReadUInt64(combat + 0x28), "战斗成长属性字典");
+                layer = ReadInt32(_runtime.Address(combat, "<CurrentLayerId>k__BackingField", "LubanDatas.TbCultivateLayerId"));
+                var baseAttributes = ReadFloatDictionary(_runtime.Reference(combat, "<BaseAttrs>k__BackingField", "System.Collections.Generic.Dictionary<Game.Model.Player.Components.CombatAttrId,System.Single>"), "战斗基础属性字典");
+                var growthAttributes = ReadFloatDictionary(_runtime.Reference(combat, "<GrowthAttrs>k__BackingField", "System.Collections.Generic.Dictionary<Game.Model.Player.Components.CombatAttrId,System.Single>"), "战斗成长属性字典");
 
                 AddDirectAttribute(attributes, locations,
-                    "cultivation.spirit-qi", "资源 · 灵气", combat + 0x74, combat, ReadInt32(combat + 0x74));
+                    "cultivation.spirit-qi", "资源 · 灵气", _runtime.Address(combat, "<CultivateReserveExp>k__BackingField", "System.Int32"), combat, ReadInt32(_runtime.Address(combat, "<CultivateReserveExp>k__BackingField", "System.Int32")));
                 AddDirectAttribute(attributes, locations,
-                    "cultivation.exp", "基础属性 · 修为", combat + 0x64, combat, ReadInt32(combat + 0x64));
+                    "cultivation.exp", "基础属性 · 修为", _runtime.Address(combat, "_CultivateExp", "System.Int32"), combat, ReadInt32(_runtime.Address(combat, "_CultivateExp", "System.Int32")));
                 AddCurrentBasicAttributeIfPresent(attributes, locations, baseAttributes, combat, 200, "精力");
                 AddBaseBasicAttributeIfPresent(attributes, locations, baseAttributes, growthAttributes, combat, 201, "精力上限");
                 AddCurrentBasicAttributeIfPresent(attributes, locations, baseAttributes, combat, 25, "灵力");
@@ -327,13 +318,13 @@ public sealed partial class WorldApartGameAdapter
         private Dictionary<int, string> ReadAllInteractAttributeNames()
         {
             var result = new Dictionary<int, string>();
-            var table = ReadUInt64(_tables + 0x440);
+            var table = _runtime.Reference(_tables, "<TbInteractAttribute>k__BackingField", "LubanDatas.TbInteractAttribute");
             if (table == 0) return result;
-            var configs = ReadReferenceList(ReadUInt64(table + 0x18), "探索属性配置表");
+            var configs = ReadReferenceList(_runtime.Reference(table, "_dataList", "System.Collections.Generic.List<LubanDatas.data.InteractAttribute>"), "探索属性配置表");
             foreach (var config in configs)
             {
-                var id = ReadInt32(config + 0x10);
-                var value = CallPointerFunction(_moduleBase + _layout.L10nTextGetValue, config + 0x18);
+                var id = _runtime.ReadInt(_runtime.Address(config, "<id>k__BackingField", "LubanDatas.TbInteractAttributeId"));
+                var value = CallPointerFunction(_moduleBase + _layout.L10nTextGetValue, _runtime.Address(config, "<name>k__BackingField", "LubanDatas.L10nText"));
                 var text = ReadManagedString(value);
                 result[id] = string.IsNullOrWhiteSpace(text) ? $"探索属性 #{id}" : text;
             }
@@ -362,12 +353,11 @@ public sealed partial class WorldApartGameAdapter
                     EmitCombatValueCall(code, request, moduleBase + layout.CombatSetBaseAttribute);
                     break;
                 case MainThreadOperation.SetSpiritRoot:
-                    code.MovRax(request.Owner);
-                    code.Emit(0x48, 0x8B, 0x48, 0x28);
+                    code.MovRcx(request.DictionaryOwner);
                     code.MovEdx(request.AttributeId);
                     code.MovR8d(request.TargetValue);
                     code.MovR9(request.MethodInfo);
-                    code.MovRax(moduleBase + layout.IntDictionarySetItem); code.CallRax();
+                    code.MovRax(request.MethodInfo); code.Emit(0x48, 0x8B, 0x00); code.CallRax();
                     code.MovRcx(request.Owner); code.Emit(0x33, 0xD2);
                     code.MovRax(moduleBase + layout.TalentMarkSpiritRootDirty); code.CallRax();
                     code.MovRcx(request.Owner); code.Emit(0x33, 0xD2);

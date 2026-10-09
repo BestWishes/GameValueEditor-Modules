@@ -1,48 +1,36 @@
-# WorldApart 专属修改模块
+# 不问凡尘专属修改模块
 
-稳定游戏 ID：`game.worldapart`，当前模块版本：`1.3.3`。
+稳定游戏 ID：`game.worldapart`，进程名 `WorldApart`。本次版本 `1.3.5`，使用 Host API 8，最低主程序 `0.5.1`。它不是放置斩魔录，也不是万里仙途。提交、正式资产与目录验证状态见[发布记录](../../../docs/RELEASE_FZZML_2_1_5_WORLDAPART_1_3_5.md)。
 
-本版本使用 Host API 7。背包和人物属性页面均由本模块程序集创建，并使用宿主提供的主题资源与间距；宿主只承载导航、视觉系统、生命周期和公共弹框/保存字段服务，页面布局不由 `Kind`/`Role` 模板决定。游戏定位、主线程写入和保存链路未改变。
-
-实机验证代码位于同游戏目录的 `tests/WorldApartLiveTest.cs`，由仓库通用运行器执行：
-
-```powershell
-dotnet run --project tests/GameValueEditor.Modules.LiveTests/GameValueEditor.Modules.LiveTests.csproj -- --game=worldapart
-```
+页面由模块创建并沿用宿主主题和公共协调接口。主程序不包含本游戏的字段、保存流程或构建表。
 
 ## 游戏内编辑模块
 
-- `game.worldapart.inventory`（背包物品）：按物品配置 ID 重新定位当前背包对象，实时读取和修改物品总数。
-- `game.worldapart.character-attributes`（人物属性）：按玩家、属性类别和配置 ID 重新定位道途点、灵根点、修为、灵气、精力及其上限、灵力及其上限、基础属性、探索属性、五行灵根与战斗属性。
+- `game.worldapart.inventory`（背包物品）：按稳定物品配置 ID 定位当前背包，读取、修改总数。
+- `game.worldapart.character-attributes`（人物属性）：玩家资源、基础属性、探索属性、五行灵根和战斗属性，类别、语义键不变。
 
-人物面板中的精力、精力上限、灵力和灵力上限统一归入游戏原有的“基础属性”分类，并按当前值、上限成对相邻显示。人物面板的“灵力”与突破界面的“丹田灵气”是两个概念；当前模块不会把灵力错误标记为丹田灵气。
+精力、精力上限、灵力、灵力上限仍属于“基础属性”，当前值与上限相邻。灵力不等于丹田灵气。`基础属性 · 修为` 对应 `CombatModel.CultivateExp`；`资源 · 灵气` 对应 `CultivateReserveExp`。
 
-`基础属性 · 修为` 对应 `CombatModel.CultivateExp`；`资源 · 灵气` 对应修炼/突破系统使用的 `CombatModel.CultivateReserveExp`。两者都按当前存档对象重新定位、在游戏主线程写入、调用自动存档并回读。
+快捷入口只保存语义键；每次从 `GameStoreManager.CurrentPlayer` 重新读取存档对象。修改在 Unity 主线程执行原生刷新/属性设置与自动存档，再重新定位回读。五行灵根新增使用当前字典实例的 `Dictionary<int,int>.set_Item` 和 MethodInfo，扩容交由 IL2CPP 处理。
 
-快捷入口只保存语义键，不保存进程地址。每次读取或写入都会从 `GameStoreManager.CurrentPlayer` 重新解析当前存档对象；写入在 Unity 主线程执行，并调用游戏自己的自动存档流程。
+## 小更新与安全边界
 
-五行灵根字典中尚不存在的属性也使用游戏自己的 `Dictionary<int,int>.set_Item` 新增。模块从当前字典实例解析构造泛型方法元数据，让 IL2CPP 自行处理扩容和版本更新，不直接拼装托管字典内部结构。
+名称“WorldApart / 不问凡尘”决定游戏身份，不再由历史三文件哈希限制整个模块。`compatibleBuilds` 只保留历史记录，`supportsUnlistedBuildValidation` 声明当前元数据定位能力。
 
-## 兼容性与安全边界
+当前 GameAssembly 导出、完整类型名、字段名称/类型、完整方法签名决定实际数据与调用位置。程序集拆分可以按唯一完整类型名重新定位；不套用旧 RVA、列表/字典字段偏移或固定泛型地址。继承字段、字典元素类型和步长均来自实际运行类型。
 
-模块优先接受 `module.json` 中实现代码明确登记的三重指纹。对于仅替换启动 EXE 的发行版本，只有 `GameAssembly.dll` 与 `global-metadata.dat` 同时完整命中同一项已验证布局，才忽略启动器哈希差异。不再使用短函数序言回退，因为它不能证明对象字段和固定方法地址未变化。缺少哈希、跨记录拼接及未知运行文件组合均拒绝。
+绑定 PID、进程启动时间及真实加载的 GameAssembly 路径/地址；元数据缓存只用于这个进程实例，不缓存玩家对象。安装目录、旧哈希和 Steam 不是适配前提。一个启动入口可能有多个同名进程，数据读取使用真正加载 IL2CPP 的运行进程，不把启动器当存档进程。
 
-实际入口核对进程启动实例、真实 EXE 和已加载 GameAssembly 路径，再读取完整文件哈希；哈希缓存绑定 PID/创建时间/路径/文件状态，不跨进程实例复用。验证期间文件变化会拒绝，Session 在任何远程调用之前再次用实际进程句柄核对创建时间。该变更未调整已有业务布局或保存路径；本次未执行实机写入验证。
+保存/刷新方法只在写入时解析，游戏自报版本等可选显示信息缺失不禁用背包。主线程操作先确认当前玩家和可用存档，再检查待写入原值；不对旧存档对象或已变化字段继续写。超时不自动重复发送，未确认结束的跳板内存保留到游戏退出。
 
-游戏目录可任意移动。若第三方发行版本修改了可执行文件名，模块会优先寻找与 EXE 同名的 `_Data` 目录，再寻找 `WorldApart_Data`；仅当安装根目录中只有一个可验证的 Unity `_Data` 目录时才自动采用，避免误选其他游戏数据。
+## 本地验证
 
-当前首个受支持构建：
+2026-10-09 从正常启动并进入存档的游戏读取到 143 类背包物品、39 项人物属性。当前保存、背包排序/刷新、探索属性、战斗基础属性、灵根缓存及 Unity 主线程入口完整签名已定位；没有调用写入或存档。
 
-- EXE SHA-256：`35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835`
-- GameAssembly SHA-256：`E4BFA837BD5F43BF5FFBE3E28C80B40CD3E20B24CE63941CE2280874DF2FA056`
-- metadata SHA-256：`55F65FE395395CAA4C3C8DE6F874107AB92742CA638F1E0F77ECB609A22154FA`
+```powershell
+dotnet run --project tests/GameValueEditor.Modules.CompatibilityTests -c Release -- --read-only-worldapart
+```
 
-当前第二个受支持构建（Steam Build ID `25617557`，游戏自报版本 `0.34.7343955`）：
+完整设计、三遍检查及离线包见 [本地修复记录](../../../docs/SMALL_UPDATE_TWO_GAMES_LOCAL.md)。只读成功不等于已经验证本更新版所有修改和持久化效果；交付包用于后续用户测试。
 
-- EXE SHA-256：`35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835`
-- GameAssembly SHA-256：`EDE8A956051C0C831F79E0874AFF28297F41D3FA18C18AD2CA2FF16C33D0938D`
-- metadata SHA-256：`BBECA25F98CFC56BFE48A5BD6DC90B9AADFEB1A6BB8F0DC03CA8DA2EF26DBDBC`
-
-游戏安装目录不是兼容身份。移动到其他目录或 Steam 库后，只要当前运行进程与相同已验证运行文件组合一致，模块仍可使用；宿主会在重新连接后刷新保存路径。
-
-更新游戏后，应先按扩展指南重新验证对象布局、关键函数、主线程入口、界面刷新和存档回读。运行文件哈希变化时需新增经过验证的精确 `BuildLayout`，不能因短签名不变沿用旧布局。诊断中的页面注册是 Information，不能视为页面读写已成功。
+历史 `tests/WorldApartLiveTest.cs` 会执行写入，不属于此只读检查。更新若真的改变字段语义或删除原生能力，报告具体项目，不以“未登记版本”拒绝整个游戏。

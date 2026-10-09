@@ -27,18 +27,20 @@ catalog.json
 
 ## 当前模块
 
-- [`game.fzzml` v2.1.4](games/fzzml/docs/README.md)
-- [`game.worldapart` v1.3.4](games/worldapart/docs/README.md)
+- 放置斩魔录：[`game.fzzml` v2.1.5](games/fzzml/docs/README.md)
+- 不问凡尘：[`game.worldapart` v1.3.5](games/worldapart/docs/README.md)
 - [`game.last-epoch` v0.5.6](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
 - [`game.play-again-expedition` v0.0.6](games/play-again-expedition/docs/LOCAL_USE.md)，包含“材料”“大转盘”“掉落”，要求主程序至少 0.5.2；直接接入正常启动的原游戏，无须启动参数或连接准备，概率调用点从当前运行代码发现。
 
-2026-10-09 远征本地修复不再依赖旧构建哈希、固定运行时版本或概率列号，已用当前 0.116.73 的实际消费者核验，见[小更新修复记录](games/play-again-expedition/docs/SMALL_UPDATE_LOCAL.md)。不问凡尘（内部 ID `game.fzzml`）仍有精确构建和固定原生地址限制，本轮只检查，见[检查结论](games/fzzml/docs/SMALL_UPDATE_REVIEW_LOCAL.md)；不能把远征的完成结论套用到它。
+2026-10-09 远征修复不再依赖旧构建哈希、固定运行时版本或概率列号，已用当前 0.116.73 的实际消费者核验，见[小更新修复记录](games/play-again-expedition/docs/SMALL_UPDATE_LOCAL.md)。此前审查把放置斩魔录误写成不问凡尘，现已纠正：放置斩魔录是 `game.fzzml`，不问凡尘是 `game.worldapart`。
+
+两个模块的本次版本分别为 2.1.5 / 1.3.5：按名称识别，从当前 IL2CPP 元数据定位字段、原生方法与主线程入口，不以历史哈希拒绝小更新。当前两款游戏只读核验、设计/复核和完整离线测试包见[本地修复记录](docs/SMALL_UPDATE_TWO_GAMES_LOCAL.md)。2026-10-09 用户已授权提交和发布；正式资产、目录、保留策略及完整离线包验证状态见[发布记录](docs/RELEASE_FZZML_2_1_5_WORLDAPART_1_3_5.md)。主程序生产代码不变，不另发主程序版本。
 
 具体功能、线程、保存链路和实机证据只维护在对应游戏目录，不复制到主程序架构文档。
 
-2026-10-09 本地后续修复：Last Epoch 取消历史哈希整包门槛，资源/异界/摄像头及统计按当前 IL2CPP 字段重新定位，个别可选属性失败不连带停用整个模块。远征请求/接口清理串行等待。配套宿主先按游戏名称识别并保留连接会话页面；小更新的构建记录与旧地址隔离不影响游戏归属。这些改动尚未提交或发布，Last Epoch 更新构建实机读取尚待游戏运行后核验。
+此前修复已包含在 Last Epoch 0.5.6、远征 0.0.6 及主程序 0.5.2 中：Last Epoch 取消历史哈希整包门槛，资源/异界/摄像头及统计按当前 IL2CPP 字段重新定位，个别可选属性失败不连带停用整个模块；远征请求/接口清理串行等待；宿主先按游戏名称识别并保留连接会话页面，小更新的构建记录与旧地址隔离不影响游戏归属。本次不重发上述资产，也不把此前未完成的 Last Epoch 更新构建实机读取说成已经通过。
 
-再刷一把：远征本地模块的当前构建与验收见[三页完成设计和复核](games/play-again-expedition/docs/THREE_EDITORS_COMPLETION_LOCAL.md)，早期两页记录见[历史设计](games/play-again-expedition/docs/IMPLEMENTATION_LOCAL.md)。运行包只有 DLL 与清单，无外部脚本依赖；构建嵌入请求需要 Node.js。它尚未走正式发布流程，不应执行全仓正式发布或为了通过发行检查而伪造贡献者、标签与目录记录。
+再刷一把：远征的三页设计与验收见[历史本地复核](games/play-again-expedition/docs/THREE_EDITORS_COMPLETION_LOCAL.md)，早期两页记录见[历史设计](games/play-again-expedition/docs/IMPLEMENTATION_LOCAL.md)。运行包只有 DLL 与清单，无外部脚本依赖；构建嵌入请求需要 Node.js。当前正式目录版本为 0.0.6，不应为重发未改模块而伪造贡献者、标签与目录记录。
 
 ## 构建
 
