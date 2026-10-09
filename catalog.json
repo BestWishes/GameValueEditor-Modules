@@ -7,7 +7,7 @@
       "legacyIds": [
         "game.fzzml.inventory.v1"
       ],
-      "version": "2.1.4",
+      "version": "2.1.5",
       "displayName": "放置斩魔录专属修改模块",
       "gameDisplayName": "放置斩魔录",
       "description": "包含背包物品与人物属性两个游戏内编辑模块。",
@@ -47,7 +47,7 @@
           "sessionOnly": true
         }
       ],
-      "supportsUnlistedBuildValidation": false,
+      "supportsUnlistedBuildValidation": true,
       "contributors": [
         {
           "githubId": 9667417,
@@ -58,10 +58,51 @@
           "latestContributionDate": "2026-09-27"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.4/GameValueEditor.Module.Fzzml-v2.1.4.zip",
-      "sizeBytes": 50749,
-      "sha256": "6D4E0F4A1569FEE0B81852A055544319C6A4AAE1242B1CF87FB483F7CB257D63",
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.5/GameValueEditor.Module.Fzzml-v2.1.5.zip",
+      "sizeBytes": 539376,
+      "sha256": "4005F59C08EA8CCC2632AEE8BCBF4F810D0F3A4A0B62BC76173F803A4AEBF17A",
       "releases": [
+        {
+          "version": "2.1.5",
+          "hostApiVersion": 8,
+          "supportsUnlistedBuildValidation": true,
+          "minimumHostVersion": "0.5.1",
+          "maximumHostVersion": null,
+          "compatibleBuilds": [
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "CEC90FD2CCEEBD51637BFAC90C86C6E45D68CC76E6FDB0FAB1430F2A198D7421",
+              "metadataSha256": "EB4D7A29675EC35CDE1106D6AE3C0E22BCA0AEF5C50248C2D42FA139077E446F"
+            },
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "EAE4239F59FD5DB09033C9FE21195A800881267B57833DA2AABB659843F99B27",
+              "metadataSha256": "BCAA6845585DA9920F61F75A04FB70ACB6298D95C94FC545D0C4583C44C88947"
+            },
+            {
+              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
+              "gameAssemblySha256": "BF156D35DDB79839797517BC95BC07080DAACDCF78D08579B7D0D4C09386D752",
+              "metadataSha256": "AEB09A9D3C8359F54C2DF29F3045C5AE1D9270DC269EC0A8E18C0D359CE4CD29"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.fzzml.inventory",
+              "displayName": "背包物品",
+              "order": 100,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.fzzml.character-attributes",
+              "displayName": "人物属性",
+              "order": 200,
+              "sessionOnly": true
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.5/GameValueEditor.Module.Fzzml-v2.1.5.zip",
+          "sizeBytes": 539376,
+          "sha256": "4005F59C08EA8CCC2632AEE8BCBF4F810D0F3A4A0B62BC76173F803A4AEBF17A"
+        },
         {
           "version": "2.1.4",
           "hostApiVersion": 8,
@@ -143,54 +184,14 @@
           "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.3/GameValueEditor.Module.Fzzml-v2.1.3.zip",
           "sizeBytes": 50449,
           "sha256": "DC313B884BE66D2E479F873CE8C7FD417A2381C8041A6945B43D896C13DA946F"
-        },
-        {
-          "version": "2.1.2",
-          "hostApiVersion": 7,
-          "minimumHostVersion": "0.4.4",
-          "maximumHostVersion": null,
-          "compatibleBuilds": [
-            {
-              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
-              "gameAssemblySha256": "CEC90FD2CCEEBD51637BFAC90C86C6E45D68CC76E6FDB0FAB1430F2A198D7421",
-              "metadataSha256": "EB4D7A29675EC35CDE1106D6AE3C0E22BCA0AEF5C50248C2D42FA139077E446F"
-            },
-            {
-              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
-              "gameAssemblySha256": "EAE4239F59FD5DB09033C9FE21195A800881267B57833DA2AABB659843F99B27",
-              "metadataSha256": "BCAA6845585DA9920F61F75A04FB70ACB6298D95C94FC545D0C4583C44C88947"
-            },
-            {
-              "executableSha256": "8B476C50395ACF8B4BD32E3DB60E29AC136436A5FADAB0E8D0049CA87CE3AACD",
-              "gameAssemblySha256": "BF156D35DDB79839797517BC95BC07080DAACDCF78D08579B7D0D4C09386D752",
-              "metadataSha256": "AEB09A9D3C8359F54C2DF29F3045C5AE1D9270DC269EC0A8E18C0D359CE4CD29"
-            }
-          ],
-          "editors": [
-            {
-              "id": "game.fzzml.inventory",
-              "displayName": "背包物品",
-              "order": 100,
-              "sessionOnly": false
-            },
-            {
-              "id": "game.fzzml.character-attributes",
-              "displayName": "人物属性",
-              "order": 200,
-              "sessionOnly": true
-            }
-          ],
-          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/fzzml-v2.1.2/GameValueEditor.Module.Fzzml-v2.1.2.zip",
-          "sizeBytes": 50244,
-          "sha256": "C695F0A6E0758A88B22466459D6B77C74A4CE03127EE69B987F56FCB37DF510C"
         }
       ]
     },
     {
       "id": "game.worldapart",
-      "version": "1.3.4",
-      "displayName": "WorldApart 专属修改模块",
-      "gameDisplayName": "WorldApart",
+      "version": "1.3.5",
+      "displayName": "不问凡尘专属修改模块",
+      "gameDisplayName": "不问凡尘",
       "description": "包含背包物品与人物属性两个可持久化的游戏内编辑模块。",
       "hostApiVersion": 8,
       "minimumHostVersion": "0.5.1",
@@ -223,7 +224,7 @@
           "sessionOnly": false
         }
       ],
-      "supportsUnlistedBuildValidation": false,
+      "supportsUnlistedBuildValidation": true,
       "contributors": [
         {
           "githubId": 9667417,
@@ -234,10 +235,46 @@
           "latestContributionDate": "2026-09-28"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.4/GameValueEditor.Module.WorldApart-v1.3.4.zip",
-      "sizeBytes": 48701,
-      "sha256": "3A327CD3E76F5FA4988B6552C68A8FDC913A45DDD8504F778B63D0A2CBE06A2A",
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.5/GameValueEditor.Module.WorldApart-v1.3.5.zip",
+      "sizeBytes": 536682,
+      "sha256": "B8944579510FD1A8F2980ACB0BCF453FAAF531180CD1D05658B8003379787095",
       "releases": [
+        {
+          "version": "1.3.5",
+          "hostApiVersion": 8,
+          "supportsUnlistedBuildValidation": true,
+          "minimumHostVersion": "0.5.1",
+          "maximumHostVersion": null,
+          "compatibleBuilds": [
+            {
+              "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
+              "gameAssemblySha256": "E4BFA837BD5F43BF5FFBE3E28C80B40CD3E20B24CE63941CE2280874DF2FA056",
+              "metadataSha256": "55F65FE395395CAA4C3C8DE6F874107AB92742CA638F1E0F77ECB609A22154FA"
+            },
+            {
+              "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
+              "gameAssemblySha256": "EDE8A956051C0C831F79E0874AFF28297F41D3FA18C18AD2CA2FF16C33D0938D",
+              "metadataSha256": "BBECA25F98CFC56BFE48A5BD6DC90B9AADFEB1A6BB8F0DC03CA8DA2EF26DBDBC"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.worldapart.inventory",
+              "displayName": "背包物品",
+              "order": 100,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.worldapart.character-attributes",
+              "displayName": "人物属性",
+              "order": 200,
+              "sessionOnly": false
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.5/GameValueEditor.Module.WorldApart-v1.3.5.zip",
+          "sizeBytes": 536682,
+          "sha256": "B8944579510FD1A8F2980ACB0BCF453FAAF531180CD1D05658B8003379787095"
+        },
         {
           "version": "1.3.4",
           "hostApiVersion": 8,
@@ -309,41 +346,6 @@
           "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.3/GameValueEditor.Module.WorldApart-v1.3.3.zip",
           "sizeBytes": 48347,
           "sha256": "2C4EEFF0F69573E1FA7E5D1E1DDF7034046D9B39850FAD270E376565E87D2374"
-        },
-        {
-          "version": "1.3.2",
-          "hostApiVersion": 7,
-          "minimumHostVersion": "0.4.4",
-          "maximumHostVersion": null,
-          "compatibleBuilds": [
-            {
-              "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
-              "gameAssemblySha256": "E4BFA837BD5F43BF5FFBE3E28C80B40CD3E20B24CE63941CE2280874DF2FA056",
-              "metadataSha256": "55F65FE395395CAA4C3C8DE6F874107AB92742CA638F1E0F77ECB609A22154FA"
-            },
-            {
-              "executableSha256": "35369BA362352B5A80A2E5844CD93F5A5FFFD18CEE61EB4861B9F4E920CDE835",
-              "gameAssemblySha256": "EDE8A956051C0C831F79E0874AFF28297F41D3FA18C18AD2CA2FF16C33D0938D",
-              "metadataSha256": "BBECA25F98CFC56BFE48A5BD6DC90B9AADFEB1A6BB8F0DC03CA8DA2EF26DBDBC"
-            }
-          ],
-          "editors": [
-            {
-              "id": "game.worldapart.inventory",
-              "displayName": "背包物品",
-              "order": 100,
-              "sessionOnly": false
-            },
-            {
-              "id": "game.worldapart.character-attributes",
-              "displayName": "人物属性",
-              "order": 200,
-              "sessionOnly": false
-            }
-          ],
-          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/worldapart-v1.3.2/GameValueEditor.Module.WorldApart-v1.3.2.zip",
-          "sizeBytes": 48431,
-          "sha256": "76362AB16AF6D1294C21DDEEE0FE80DA58EC23F318FA1AA563489EB232DF0D92"
         }
       ]
     },
