@@ -30,7 +30,7 @@ catalog.json
 - 放置斩魔录：[`game.fzzml` v2.1.5](games/fzzml/docs/README.md)
 - 不问凡尘：[`game.worldapart` v1.3.5](games/worldapart/docs/README.md)
 - [`game.last-epoch` v0.5.6](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
-- [`game.play-again-expedition` v0.0.6](games/play-again-expedition/docs/LOCAL_USE.md)，包含“材料”“大转盘”“掉落”，要求主程序至少 0.5.2；直接接入正常启动的原游戏，无须启动参数或连接准备，概率调用点从当前运行代码发现。
+- [`game.play-again-expedition` v0.0.7](games/play-again-expedition/docs/LOCAL_USE.md)，包含“材料”“大转盘”“掉落”“命格”“装备”，要求主程序至少 0.5.2；直接接入正常启动的原游戏，无须启动参数或连接准备。大转盘单抽/十连共用概率规则，新生成装备、宝石（含基础属性）、时装、徽章的数值可取原生范围满值。
 
 2026-10-09 远征修复不再依赖旧构建哈希、固定运行时版本或概率列号，已用当前 0.116.73 的实际消费者核验，见[小更新修复记录](games/play-again-expedition/docs/SMALL_UPDATE_LOCAL.md)。此前审查把放置斩魔录误写成不问凡尘，现已纠正：放置斩魔录是 `game.fzzml`，不问凡尘是 `game.worldapart`。
 
@@ -40,7 +40,7 @@ catalog.json
 
 此前修复已包含在 Last Epoch 0.5.6、远征 0.0.6 及主程序 0.5.2 中：Last Epoch 取消历史哈希整包门槛，资源/异界/摄像头及统计按当前 IL2CPP 字段重新定位，个别可选属性失败不连带停用整个模块；远征请求/接口清理串行等待；宿主先按游戏名称识别并保留连接会话页面，小更新的构建记录与旧地址隔离不影响游戏归属。本次不重发上述资产，也不把此前未完成的 Last Epoch 更新构建实机读取说成已经通过。
 
-再刷一把：远征的三页设计与验收见[历史本地复核](games/play-again-expedition/docs/THREE_EDITORS_COMPLETION_LOCAL.md)，早期两页记录见[历史设计](games/play-again-expedition/docs/IMPLEMENTATION_LOCAL.md)。运行包只有 DLL 与清单，无外部脚本依赖；构建嵌入请求需要 Node.js。当前正式目录版本为 0.0.6，不应为重发未改模块而伪造贡献者、标签与目录记录。
+再刷一把：远征的三页设计与验收见[历史本地复核](games/play-again-expedition/docs/THREE_EDITORS_COMPLETION_LOCAL.md)，早期两页记录见[历史设计](games/play-again-expedition/docs/IMPLEMENTATION_LOCAL.md)。本次五页功能、本地测试与正式发布边界见 [0.0.7 发布记录](games/play-again-expedition/docs/RELEASE_0_0_7.md)；本地测试 0.0.7～0.1.1 合并为下一正式版本 0.0.7，不重发其他模块。运行包只有 DLL 与清单，无外部脚本依赖；构建嵌入请求需要 Node.js。
 
 ## 构建
 

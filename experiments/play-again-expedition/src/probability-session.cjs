@@ -1,7 +1,8 @@
 'use strict';
+const { createWheelRngBridge } = require('./wheel-rng-bridge.cjs');
 
 // Fixed per-engine hooks. Never change Math.random or invoke a game action/save.
-function createProbabilitySession(engine, model, context) {
+function createProbabilitySession(engine, model, context, bridgeFactory) {
   const fail = code => { throw Error(code); };
   const names = ['spinLuckyWheel', 'victory', 'dropBonus', 'immortalDropChance'];
   if (!engine || typeof engine.rng !== 'function' || names.some(name => typeof engine[name] !== 'function') ||
@@ -13,6 +14,14 @@ function createProbabilitySession(engine, model, context) {
     if (typeof engine[name] === 'function') names.push(name);
   const originals = new Map(names.map(name => [name, { value: engine[name], own: Object.getOwnPropertyDescriptor(engine, name) }]));
   const originalRng = engine.rng, state = engine.state;
+  const generatedKey=Symbol.for('GameValueEditor.PlayAgainExpedition.GeneratedRng.v1');
+  const unwrap=fn=>{
+    const tag=Object.getOwnPropertyDescriptor(fn,generatedKey)?.value;
+    return tag&&tag.owner===engine&&typeof tag.base==='function'&&typeof tag.current==='function'?tag.base:fn;
+  };
+  const rootRng=unwrap(originalRng);
+  const acceptsRng=fn=>typeof fn==='function'&&(fn===rootRng||unwrap(fn)===rootRng&&fn[generatedKey].current()===true);
+  let activeRng=null;
   let settings = {}, installed = false, activeDepth = 0, flameBoss = null, blocked = null, hits = {}, calls = {}, owned = new Map();
   let readingNative = false, mineHero = null, cowPool = null, cowMythicRoll = 0;
   const normalize = value => value.replaceAll('\\', '/').toLowerCase();
@@ -53,11 +62,16 @@ function createProbabilitySession(engine, model, context) {
     }
     return quality === 6 && pool.length === 1 && model.cowPools.mythic.includes(pool[0]) ? 'mythic' : null;
   }
-  function rngProxy() {
-    const value = Reflect.apply(originalRng, this, arguments);
+  // The native ten-draw loop keeps its next board LOCAL until the batch ends.
+  // A fixed, deliberately non-strict bridge can read chooseWheelIndex's real
+  // arguments in the current native bundle. Never use the stale outer board.
+  // No source from the player, global prototype patch or native object write.
+  const rngHook = (bridgeFactory ?? createWheelRngBridge)(rngProxy);
+  function rngProxy(drawBoard, nativeArguments) {
+    const value = Reflect.apply(activeRng??engine.rng, this, nativeArguments);
     if (blocked || !current() || !hooksOwned()) return value;
     try {
-      const error = new Error(); Error.captureStackTrace(error, rngProxy);
+      const error = new Error(); Error.captureStackTrace(error, rngHook);
       const frame = normalize(error.stack.split('\n')[1] ?? '');
       if (engine.mode === 'mine') {
         if (site(frame, 'mineReward') && settings.drops?.mine?.rewardPercent !== undefined) {
@@ -95,7 +109,8 @@ function createProbabilitySession(engine, model, context) {
       }
       if (site(frame, 'wheelPrize')) {
         if (!settings.wheel) return value;
-        const weights = model.wheelWeights(state.luckyWheel.board, settings.wheel);
+        if (!Array.isArray(drawBoard)) fail('WHEEL_DRAW_BOARD_UNAVAILABLE');
+        const weights = model.wheelWeights(drawBoard, settings.wheel);
         hits.wheelPrize = (hits.wheelPrize ?? 0) + 1;
         return model.mapCategorical(value, weights.native, weights.desired);
       }
@@ -184,7 +199,7 @@ function createProbabilitySession(engine, model, context) {
               if (percent === 0) return undefined;
               // Native rewards are guaranteed. Only a non-endpoint gate adds a draw.
               if (percent !== 100) {
-                const value = Reflect.apply(originalRng, engine, []);
+                const value = Reflect.apply(activeRng??engine.rng, engine, []);
                 if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value >= 1) {
                   blocked = 'RNG_VALUE_INVALID'; return Reflect.apply(original, this, args);
                 }
@@ -205,16 +220,18 @@ function createProbabilitySession(engine, model, context) {
   function runWithRng(original, receiver, args) {
       if (activeDepth > 0) return Reflect.apply(original, receiver, args);
       const descriptor = rngDescriptor();
-      if (descriptor?.value !== originalRng || descriptor.writable !== true) { blocked = 'RNG_OWNER_CHANGED'; return Reflect.apply(original, receiver, args); }
+      if (!acceptsRng(descriptor?.value) || descriptor.writable !== true) { blocked = 'RNG_OWNER_CHANGED'; return Reflect.apply(original, receiver, args); }
+      const previous=descriptor.value;activeRng=previous;
       activeDepth++;
-      try { engine.rng = rngProxy; return Reflect.apply(original, receiver, args); }
+      try { engine.rng = rngHook; return Reflect.apply(original, receiver, args); }
       finally {
         activeDepth--;
-        if (rngDescriptor()?.value === rngProxy) {
-          try { if (!Reflect.set(engine, 'rng', originalRng)) blocked = 'RNG_RESTORE_CONFLICT'; }
+        if (rngDescriptor()?.value === rngHook) {
+          try { if (!Reflect.set(engine, 'rng', previous)) blocked = 'RNG_RESTORE_CONFLICT'; }
           catch { blocked = 'RNG_RESTORE_CONFLICT'; }
         }
         else blocked = 'RNG_OWNER_CHANGED';
+        activeRng=null;
       }
   }
   function inspect() {
@@ -248,7 +265,7 @@ function createProbabilitySession(engine, model, context) {
       layout: 'current-runtime', advancedDropsSupported: advancedLayout,
       consumerCapabilities: Object.keys(context.sites ?? consumerNames),
       hitsScope: 'session-cumulative',
-      rngOriginal: rngDescriptor()?.value === originalRng, wheelStatus, wheel, hits: { ...hits }, calls: { ...calls }, sessionOnly: true,
+      rngOriginal: acceptsRng(rngDescriptor()?.value), wheelStatus, wheel, hits: { ...hits }, calls: { ...calls }, sessionOnly: true,
       rngWritable: rngDescriptor()?.writable === true,
       hookCapabilities: names.map(name => {
         const descriptor = Object.getOwnPropertyDescriptor(engine, name);
@@ -265,7 +282,7 @@ function createProbabilitySession(engine, model, context) {
     try { return originalRate(name, [argument]); } catch { return NaN; } finally { readingNative = previous; }
   }
   function assertIdle() {
-    if (!current() || !hooksOwned() || rngDescriptor()?.value !== originalRng || rngDescriptor()?.writable !== true) fail('PROBABILITY_SESSION_CHANGED');
+    if (!current() || !hooksOwned() || !acceptsRng(rngDescriptor()?.value) || rngDescriptor()?.writable !== true) fail('PROBABILITY_SESSION_CHANGED');
     if (activeDepth || engine.phase !== 'idle' || state.luckyWheel?.pending) fail('PROBABILITY_OPERATION_NOT_IDLE');
   }
   function configure(input, namespace) {
@@ -326,7 +343,7 @@ function createProbabilitySession(engine, model, context) {
       if (Object.keys(next).length) {
         assertIdle(); if (blocked) fail('PROBABILITY_SESSION_BLOCKED');
         settings = next;
-        return { restored: true, conflicts: [], namespace, rngOriginal: rngDescriptor()?.value === originalRng, sessionOnly: true };
+        return { restored: true, conflicts: [], namespace, rngOriginal: acceptsRng(rngDescriptor()?.value), sessionOnly: true };
       }
     }
     const conflicts = [];
@@ -337,7 +354,7 @@ function createProbabilitySession(engine, model, context) {
       catch { conflicts.push(name); }
     }
     owned.clear(); installed = false; settings = {}; blocked = null;
-    return { restored: conflicts.length === 0, conflicts, namespace: namespace ?? null, rngOriginal: rngDescriptor()?.value === originalRng, sessionOnly: true };
+    return { restored: conflicts.length === 0, conflicts, namespace: namespace ?? null, rngOriginal: acceptsRng(rngDescriptor()?.value), sessionOnly: true };
   }
   return { inspect, configure, reset };
 }

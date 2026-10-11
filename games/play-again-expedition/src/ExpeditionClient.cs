@@ -209,6 +209,77 @@ internal sealed class ExpeditionClient : IExpeditionClient
         });
     }
 
+    public FateSnapshot ReadFate(GameProcessContext process)
+    {
+        var read = Exchange(process, "fate-inspect", new { });
+        var data = read.Observation.GetProperty("fate"); CheckProbabilityBase(data);
+        Require(data.GetProperty("readOnly").GetBoolean());
+        var report = data.GetProperty("report");
+        Require(report.GetProperty("preservesPity").GetBoolean() && report.GetProperty("singleAndTen").GetBoolean());
+        var original = FateProfile.Parse(report.GetProperty("original").GetRawText());
+        var installed = report.GetProperty("installed").GetBoolean();
+        var profile = installed ? FateProfile.Parse(report.GetProperty("profile").GetRawText()) : original;
+        var ready = report.GetProperty("ready").GetBoolean();
+        var status = report.GetProperty("blocked").ValueKind != JsonValueKind.Null ? "命格规则未确认，请恢复原规则后刷新。" :
+            ready ? installed ? "命格概率已应用，单抽和十连均生效；保留百抽神话保底。" : "当前使用游戏原概率；支持单抽和十连，保留百抽神话保底。" :
+            "请等待当前游戏操作和转盘结算结束后刷新。";
+        return new(read, profile, original, installed, ready, status, report.GetProperty("canRestore").GetBoolean());
+    }
+    public void ConfigureFate(GameProcessContext process, FateSnapshot read, FateProfile profile)
+    { profile.Validate(); ChangeFate(process, read, profile); }
+    public void ResetFate(GameProcessContext process, FateSnapshot read) => ChangeFate(process, read, null);
+    private void ChangeFate(GameProcessContext process, FateSnapshot read, FateProfile? profile)
+    {
+        if (profile is null ? !read.CanRestore : !read.Ready) throw new InvalidOperationException(read.Status);
+        var scope = Scope(read.Receipt.Observation);
+        var revision = read.Receipt.Observation.GetProperty("fate").GetProperty("revision").GetInt64();
+        var input = new JsonObject { ["scopeHash"] = scope, ["revision"] = revision };
+        if (profile is not null) input["profile"] = JsonNode.Parse(profile.ToJson());
+        _ = Exchange(process, profile is null ? "fate-reset" : "fate-configure", input, read.Receipt.Session, result =>
+        {
+            var data = result.GetProperty("fate"); CheckProbabilityBase(data); var report = data.GetProperty("report");
+            Require(Scope(result) == scope && data.GetProperty("revision").GetInt64() == revision + 1 && !data.GetProperty("readOnly").GetBoolean() &&
+                report.GetProperty("hooksOwned").GetBoolean() && report.GetProperty("blocked").ValueKind == JsonValueKind.Null &&
+                report.GetProperty("installed").GetBoolean() == (profile is not null));
+            if (profile is not null) Require(JsonNode.DeepEquals(JsonNode.Parse(profile.ToJson()), JsonNode.Parse(report.GetProperty("profile").GetRawText())));
+        });
+    }
+
+    public EquipmentSnapshot ReadEquipment(GameProcessContext process)
+    {
+        var read = Exchange(process, "equipment-inspect", new { });
+        var data = read.Observation.GetProperty("equipment"); CheckProbabilityBase(data);
+        Require(data.GetProperty("readOnly").GetBoolean());
+        var report = data.GetProperty("report");
+        Require(report.GetProperty("newEquipmentOnly").GetBoolean() && report.GetProperty("doubleValues").GetBoolean());
+        if (!(report.TryGetProperty("upgradeRequired", out var legacy) && legacy.GetBoolean()))
+            Require(report.GetProperty("gemBase").GetBoolean() && report.GetProperty("generatedKinds").EnumerateArray().Select(row => row.GetString()).SequenceEqual(new[] { "gear", "gem", "costume", "badge" }));
+        var installed = report.GetProperty("installed").GetBoolean(); var ready = report.GetProperty("ready").GetBoolean();
+        var status = report.TryGetProperty("probabilityUpgradeRequired", out var probabilityUpgrade) && probabilityUpgrade.GetBoolean() ? "本次游戏仍在使用旧版概率规则，请先在大转盘、掉落页恢复已应用规则，再刷新这些页面和装备页；无需重启。" :
+            report.TryGetProperty("upgradeRequired", out var upgrade) && upgrade.GetBoolean() ? "当前装备规则来自旧版，请先点恢复原规则，再刷新并应用新版规则；无需重启游戏。" :
+            report.GetProperty("blocked").ValueKind != JsonValueKind.Null ? "装备规则未确认，请恢复原规则后刷新。" : ready ?
+            installed ? "新生成装备、宝石、时装和徽章词条取满值已启用；已有物品不变。" : "当前使用游戏随机取值；满值规则仅影响之后新生成的装备、宝石、时装和徽章。" :
+            "请等待当前游戏操作和转盘结算结束后刷新。";
+        return new(read, installed, ready, report.GetProperty("canRestore").GetBoolean(), status);
+    }
+    public void ConfigureEquipment(GameProcessContext process, EquipmentSnapshot read) => ChangeEquipment(process, read, true);
+    public void ResetEquipment(GameProcessContext process, EquipmentSnapshot read) => ChangeEquipment(process, read, false);
+    private void ChangeEquipment(GameProcessContext process, EquipmentSnapshot read, bool enable)
+    {
+        if (enable ? !read.Ready : !read.CanRestore) throw new InvalidOperationException(read.Status);
+        var scope = Scope(read.Receipt.Observation);
+        var revision = read.Receipt.Observation.GetProperty("equipment").GetProperty("revision").GetInt64();
+        var input = new JsonObject { ["scopeHash"] = scope, ["revision"] = revision };
+        if (enable) input["profile"] = JsonNode.Parse(EquipmentPage.EnabledJson);
+        _ = Exchange(process, enable ? "equipment-configure" : "equipment-reset", input, read.Receipt.Session, result =>
+        {
+            var data = result.GetProperty("equipment"); CheckProbabilityBase(data); var report = data.GetProperty("report");
+            Require(Scope(result) == scope && data.GetProperty("revision").GetInt64() == revision + 1 && !data.GetProperty("readOnly").GetBoolean() &&
+                report.GetProperty("hooksOwned").GetBoolean() && report.GetProperty("blocked").ValueKind == JsonValueKind.Null && report.GetProperty("installed").GetBoolean() == enable);
+            if (enable) Require(report.GetProperty("profile").GetProperty("enabled").GetBoolean());
+        });
+    }
+
     private static void CheckProbabilityBase(JsonElement data) => Require(data.GetProperty("sessionOnly").GetBoolean() &&
         !data.GetProperty("nativeSaveCalled").GetBoolean() && !data.GetProperty("gameActionCalled").GetBoolean() && data.GetProperty("report").GetProperty("ownerCurrent").GetBoolean());
     private static void Require(bool valid) { if (!valid) throw new InvalidOperationException("接口结果未完整确认，已停止写入，不会自动重试。"); }
@@ -246,7 +317,7 @@ internal sealed class ExpeditionClient : IExpeditionClient
 
     private SessionRead Exchange(GameProcessContext process, string name, object input, GameSession? expected = null, Action<JsonElement>? confirm = null)
     {
-        // All three pages share the same game interface. Wait for cleanup rather than
+        // All pages share the same game interface. Wait for cleanup rather than
         // treating an ordinary overlapping refresh as a failed game operation.
         lock (ExchangeGate) return ExchangeCore(process, name, input, expected, confirm);
     }
@@ -340,7 +411,17 @@ internal sealed class ExpeditionClient : IExpeditionClient
         "MATERIAL_RANGE_INVALID" => "材料数量超出已验证范围，未执行修改。",
         "GAME_BUSY" or "WHEEL_PENDING" or "PROBABILITY_BUSY" or "PROBABILITY_OPERATION_NOT_IDLE" => "请停止战斗并等大转盘结算结束后刷新。",
         "PROBABILITY_IMPLEMENTATION_CHANGED_RESTART_REQUIRED" => "当前游戏实例仍有旧版模块的会话规则，请正常保存并重启一次再连接；这不是启动参数要求。",
+        "PROBABILITY_IMPLEMENTATION_CHANGED_RESTORE_REQUIRED" => "当前游戏仍使用旧版模块的概率规则。请先在大转盘和掉落页面恢复已应用的规则，然后刷新、重新应用；不用修改启动参数或重启游戏。",
+        "WHEEL_DRAW_BOARD_UNAVAILABLE" => "当前抽奖未能读取实际奖盘，概率规则未生效。请恢复规则后刷新；不会用旧奖盘替换本次奖励。",
         "PROBABILITY_CONSUMER_NOT_SUPPORTED" => "选中的规则在当前游戏中没有找到对应入口，未应用；其它已定位的规则仍可使用。",
+        "FATE_PROFILE_INVALID" => "四档命格概率必须在 0～100% 内，合计为 100%。",
+        "FATE_BUSY_OR_CONFLICT" => "请等待当前游戏操作结束后刷新命格；不会覆盖其它程序的规则。",
+        "FATE_CONSUMER_CHANGED" or "FATE_CONTRACT_CHANGED" or "FATE_POOL_UNAVAILABLE" => "当前命格抽取入口尚未确认，未应用规则；其它内容页面不受影响。",
+        "EQUIPMENT_BUSY_OR_CONFLICT" => "请等待当前游戏操作结束后刷新装备；不会覆盖其它程序的规则。",
+        "EQUIPMENT_UPGRADE_REQUIRED" => "请先恢复旧版装备规则，再刷新并应用新版；无需重启游戏。",
+        "EQUIPMENT_PROBABILITY_UPGRADE_REQUIRED" => "请先在大转盘、掉落页恢复旧版已应用规则，刷新这些页面与装备页后再应用；无需重启。",
+        "EQUIPMENT_CONSUMER_CHANGED" or "EQUIPMENT_CONTRACT_CHANGED" => "当前装备生成公式尚未确认，未启用满值规则；其它内容页面不受影响。",
+        "EQUIPMENT_GEM_CONSUMER_CHANGED" or "EQUIPMENT_ACCESSORY_CONSUMER_CHANGED" => "当前宝石或其它物品的生成数值尚未确认，未启用满值规则；其它内容页面不受影响。",
         _ => $"模块操作未确认（{code}）。请先刷新核验；若有不确定写入，需要正常重启游戏后再操作，不会自动重试。"
     };
 }

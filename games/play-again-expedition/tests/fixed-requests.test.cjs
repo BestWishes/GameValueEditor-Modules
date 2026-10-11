@@ -4,8 +4,8 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const { buildTemplates, samples } = require('../tools/build-requests.cjs');
 const templates = buildTemplates();
-test('package exposes exactly material read/write and two isolated probability namespaces', () => {
-  assert.deepEqual(Object.keys(templates), ['materials-list', 'materials-set', 'wheel-inspect', 'wheel-configure', 'wheel-reset', 'drops-inspect', 'drops-configure', 'drops-reset']);
+test('package exposes fixed material, wheel, drop, fate and equipment operations only', () => {
+  assert.deepEqual(Object.keys(templates), ['materials-list', 'materials-set', 'wheel-inspect', 'wheel-configure', 'wheel-reset', 'drops-inspect', 'drops-configure', 'drops-reset', 'fate-inspect', 'fate-probe', 'fate-configure', 'fate-reset', 'equipment-inspect', 'equipment-probe', 'equipment-configure', 'equipment-reset']);
 });
 for (const [name, [builder, operation, input]] of Object.entries(samples)) {
   test(name + ' embeds the verified backend exactly, including formal bundled callsites', () => {

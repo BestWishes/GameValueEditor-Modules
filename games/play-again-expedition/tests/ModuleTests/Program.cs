@@ -38,6 +38,7 @@ internal static class Program
             try
             {
                 if (args.Length == 2 && args[0] == "--small-update-live-readonly") await SmallUpdateLive(int.Parse(args[1]));
+                else if (args.Length == 2 && args[0] == "--equipment-wheel-readonly") await EquipmentWheelReadonly(int.Parse(args[1]));
                 else if (args.Length == 2 && args[0] == "--read-live-approved") await LiveReadonly(int.Parse(args[1]));
                 else if (args.Length == 2 && args[0] == "--materials-live-readonly") await MaterialsLiveReadonly(int.Parse(args[1]));
                 else if (args.Length == 2 && args[0] == "--launcher-speed-live-approved") await LauncherSpeedLive(int.Parse(args[1]));
@@ -188,6 +189,48 @@ internal static class Program
             writable = read.Rows.Count(row => row.CanWrite), activity = read.Receipt.Observation.GetProperty("material").GetProperty("journeyMode").GetString(),
             nativeSaveCalled = false, gameActionCalled = false, gameInstanceUnchanged = true, interfaceClosed = true }));
     }
+    private static async Task EquipmentWheelReadonly(int pid)
+    {
+        await Task.Run(() =>
+        {
+            using var selected = Process.GetProcessById(pid);
+            var context = new GameProcessContext(pid, selected.ProcessName, selected.MainModule!.FileName, selected.StartTime.ToUniversalTime());
+            var session = OriginalGameSession.Resolve(context, false);
+            Check(RuntimeBridge.Listener(9229).IsFree && RuntimeBridge.Listener(59321).IsFree, "Do not borrow existing interfaces");
+            using var bridge = RuntimeBridge.Connect(session); bridge.AssertEndpoint();
+            try
+            {
+                foreach (var area in new[] { "gear", "shop", "wheel", "gem-base", "gem-wheel" })
+                {
+                    var result = ExpeditionClient.Send(bridge.Uri, ExpeditionClient.BuildRequest("equipment-probe", session, new { area }), 402)
+                        .GetAwaiter().GetResult().GetProperty("equipment").GetProperty("diagnostic");
+                    Check(result.GetProperty("copyOnly").GetBoolean() && !result.GetProperty("originalGameActionCalled").GetBoolean() &&
+                        !result.GetProperty("nativeSaveCalled").GetBoolean(), "Original action/save called");
+                    if (area == "gear")
+                    {
+                        Check(result.GetProperty("passedChecks").GetInt32() >= 100, "Direct generation failed");
+                        var wheel = result.GetProperty("wheel");
+                        Check(wheel.GetProperty("copyOnly").GetBoolean() && wheel.GetProperty("cases").GetInt32() >= 6 &&
+                            wheel.GetProperty("gearRewards").GetInt32() > 0, "Actual wheel reward maxima unproven");
+                    }
+                    else
+                    {
+                        var generated = result.GetProperty("generated");
+                        var minimum = area switch { "shop" => 96, "wheel" => 54, "gem-base" => 80, _ => 60 };
+                        Check(generated.GetProperty("copyOnly").GetBoolean() && generated.GetProperty("cases").GetInt32() >= minimum, "Accessory cases missing: " + area);
+                        foreach (var kind in area.StartsWith("gem-", StringComparison.Ordinal) ? new[] { "gem" } : new[] { "gem", "costume", "badge" })
+                            Check(generated.GetProperty(area is "shop" or "gem-base" ? "generatedItems" : "targetedWheelItems").GetProperty(kind).GetInt32() > 0, "New accessory max unproven: " + kind);
+                        if (area.StartsWith("gem-", StringComparison.Ordinal))
+                            Check(generated.GetProperty("gemBaseTypes").EnumerateObject().Count() == 10 && generated.GetProperty("gemBaseTypes").EnumerateObject().All(row => row.Value.GetInt32() > 0), "Ten native gem base types not covered");
+                    }
+                    Console.WriteLine(JsonSerializer.Serialize(new { verification = "equipment-wheel-original-renderer-copies", diagnostic = result }));
+                }
+            }
+            finally { bridge.Finish(); }
+            Check(bridge.Warning.Length == 0 && RuntimeBridge.Listener(9229).IsFree && RuntimeBridge.Listener(59321).IsFree, "Interface cleanup failed");
+            Check(!selected.HasExited && selected.StartTime.ToUniversalTime().Ticks == session.StartTicks, "Original game instance changed");
+        });
+    }
     private static async Task SmallUpdateLive(int pid)
     {
         await Task.Run(() =>
@@ -202,6 +245,19 @@ internal static class Program
             Check(version == ArchiveMetadata.ReadVersion(session.ArchivePath), "Declared version is not from the current package");
             Check(RuntimeBridge.Listener(9229).IsFree && RuntimeBridge.Listener(59321).IsFree, "Do not borrow user-owned interfaces during this test");
             var materials = client.ReadMaterials(context); var wheel = client.ReadWheel(context); var drops = client.ReadDrops(context);
+            var fate = client.ReadFate(context); var equipment = client.ReadEquipment(context);
+            Check(!fate.Installed && !equipment.Installed, "Readonly rule discovery unexpectedly installed hooks");
+            Check(fate.Original == FateProfile.Default, "Current native fate defaults differ");
+            foreach (var name in new[] { "fate", "equipment" })
+            {
+                using var rulesBridge = RuntimeBridge.Connect(session); rulesBridge.AssertEndpoint();
+                var rules = ExpeditionClient.Send(rulesBridge.Uri, ExpeditionClient.BuildRequest(name + "-probe", session, new { }), 402).GetAwaiter().GetResult().GetProperty(name);
+                var proof = rules.GetProperty("diagnostic");
+                Check(proof.GetProperty("copyOnly").GetBoolean() && !proof.GetProperty("originalGameActionCalled").GetBoolean() && !proof.GetProperty("nativeSaveCalled").GetBoolean(), "Rule probe touched original game");
+                Check(proof.GetProperty("passedChecks").GetInt32() >= (name == "fate" ? 163 : 100), "Native rule consumers failed");
+                Console.WriteLine(JsonSerializer.Serialize(new { verification = name + "-original-renderer-copies", checks = proof.GetProperty("passedChecks").GetInt32() }));
+                rulesBridge.Finish(); Check(rulesBridge.Warning.Length == 0, "Rule interface cleanup failed");
+            }
             Check(materials.Rows.Count >= 29 && materials.Rows.Any(row => row.Id == "protectionScrolls"), "Updated materials unavailable");
             Check(wheel.Rows.Count is 0 or 16 && drops.NativeValues.Count == DropProfile.Options.Length, "Updated probability pages unavailable");
             var probability = wheel.Receipt.Observation.GetProperty("probability");
@@ -408,7 +464,17 @@ internal static class Program
         Reject(() => adapter.WriteField(Context().Process, ExpeditionGameAdapter.WheelKey, "arbitrary code"), "Code accepted");
         Reject(() => adapter.WriteField(Context().Process, ModuleFieldKey.Create(ExpeditionGameAdapter.MaterialsId, "protectionScrolls", "quantity"), "1.1"), "Fractional count accepted");
         Check(client.Reads == 0 && client.Writes == 0, "Invalid input reached game client");
-        Check(adapter.Editors.Select(item => item.DisplayName).SequenceEqual(new[] { "材料", "大转盘", "掉落" }), "Editor labels changed");
+        Check(adapter.Editors.Select(item => item.DisplayName).SequenceEqual(new[] { "材料", "大转盘", "掉落", "命格", "装备" }), "Editor labels changed");
+        Check(FateProfile.Parse(FateProfile.Default.ToJson()) == FateProfile.Default, "Fate profile round trip");
+        foreach (var json in new[] { "{}", "{\"blue\":100,\"purple\":1,\"immortal\":0,\"mythic\":0}", "{\"blue\":100,\"blue\":0,\"immortal\":0,\"mythic\":0}" })
+            Reject(() => FateProfile.Parse(json), "Invalid fate profile accepted");
+        Reject(() => adapter.WriteField(Context().Process, ExpeditionGameAdapter.FateKey, "{}"), "Bad fate input reached client");
+        Check(client.Reads == 0 && client.Writes == 0, "Bad fate input touched game");
+        Check(adapter.GetFieldPolicy(ExpeditionGameAdapter.FateId, "session", "configuration") is { SessionOnly: true, CanLock: false }, "Fate policy");
+        Reject(() => adapter.WriteField(Context().Process, ExpeditionGameAdapter.EquipmentKey, "{\"enabled\":false}"), "Bad equipment input reached client");
+        Reject(() => EquipmentPage.ValidateProfile("{\"enabled\":true,\"enabled\":true}"), "Duplicate equipment profile accepted");
+        Check(client.Reads == 0 && client.Writes == 0, "Bad equipment input touched game");
+        Check(adapter.GetFieldPolicy(ExpeditionGameAdapter.EquipmentId, "session", "configuration") is { SessionOnly: true, CanLock: false }, "Equipment policy");
         Check(adapter.GetFieldPolicy(ExpeditionGameAdapter.DropsId, "session", "configuration") is { SessionOnly: true, CanLock: false }, "Drops policy");
         var dropProfile = DropProfile.Parse("{\"drops\":{\"goldBonusPercent\":100,\"mine\":{\"qualityPercent\":{\"blue\":0,\"purple\":0,\"immortal\":0,\"mythic\":100}}}}");
         Check(DropProfile.Parse(dropProfile.ToJson()).ToJson() == dropProfile.ToJson(), "Drop round trip");
@@ -567,7 +633,7 @@ internal static class Program
     private static T Field<T>(object page, string name) => (T)page.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
     private static async Task Pages()
     {
-        foreach (var editor in new[] { ExpeditionGameAdapter.MaterialsId, ExpeditionGameAdapter.WheelId, ExpeditionGameAdapter.DropsId })
+        foreach (var editor in new[] { ExpeditionGameAdapter.MaterialsId, ExpeditionGameAdapter.WheelId, ExpeditionGameAdapter.DropsId, ExpeditionGameAdapter.FateId, ExpeditionGameAdapter.EquipmentId })
         foreach (var scenario in new[] { "normal", "cancel", "expired", "missing-write", "missing-snapshot", "write-error", "invalid", "stale" })
         {
             using var lifetime = new CancellationTokenSource();
@@ -594,10 +660,22 @@ internal static class Program
                 if (scenario == "invalid") boxes[0].Text = "10";
                 if (scenario is "cancel" or "expired") lifetime.Cancel();
             }
-            else
+            else if (editor == ExpeditionGameAdapter.DropsId)
             {
                 var row = Field<System.Collections.ObjectModel.ObservableCollection<DropEditRow>>(page, "_items").First();
                 row.Enabled = true; row.Value = scenario == "invalid" ? "NaN" : "20";
+                if (scenario is "cancel" or "expired") lifetime.Cancel();
+            }
+            else if (editor == ExpeditionGameAdapter.FateId)
+            {
+                var boxes = Field<TextBox[]>(page, "_values");
+                for (var i = 0; i < 4; i++) boxes[i].Text = i == 3 ? "100" : "0";
+                if (scenario == "invalid") boxes[0].Text = "1";
+                if (scenario is "cancel" or "expired") lifetime.Cancel();
+            }
+            else
+            {
+                Field<CheckBox>(page, "_enabled").IsChecked = scenario != "invalid";
                 if (scenario is "cancel" or "expired") lifetime.Cancel();
             }
             if (scenario == "invalid" && editor == ExpeditionGameAdapter.MaterialsId) host.Prompt = "1.5";
@@ -612,16 +690,18 @@ internal static class Program
             if (scenario == "normal" && editor != ExpeditionGameAdapter.MaterialsId)
             {
                 await Call(page, "RestoreAsync");
-                Check(host.LastValue == "restore" && host.LastKey == (editor == ExpeditionGameAdapter.WheelId ? ExpeditionGameAdapter.WheelKey : ExpeditionGameAdapter.DropsKey) && client.Writes == 2, "Restore bypassed same semantic queue");
+                var expectedKey = editor == ExpeditionGameAdapter.WheelId ? ExpeditionGameAdapter.WheelKey : editor == ExpeditionGameAdapter.DropsId ? ExpeditionGameAdapter.DropsKey :
+                    editor == ExpeditionGameAdapter.FateId ? ExpeditionGameAdapter.FateKey : ExpeditionGameAdapter.EquipmentKey;
+                Check(host.LastValue == "restore" && host.LastKey == expectedKey && client.Writes == 2, "Restore bypassed same semantic queue");
             }
         }
         foreach (var theme in Enum.GetValues<ApplicationTheme>())
-        foreach (var editor in new[] { ExpeditionGameAdapter.MaterialsId, ExpeditionGameAdapter.WheelId, ExpeditionGameAdapter.DropsId })
+        foreach (var editor in new[] { ExpeditionGameAdapter.MaterialsId, ExpeditionGameAdapter.WheelId, ExpeditionGameAdapter.DropsId, ExpeditionGameAdapter.FateId, ExpeditionGameAdapter.EquipmentId })
         {
             new ThemeService().Apply(theme);
             var client = new FakeClient(); var adapter = new ExpeditionGameAdapter(client); var host = new Host { Adapter = adapter };
             using var page = adapter.CreateEditorPage(editor, Context(host)); await Call(page, "RefreshAsync");
-            await Render(page.View, theme, editor.EndsWith("materials") ? "materials" : editor.EndsWith("drops") ? "drops" : "wheel", 980, 680);
+            await Render(page.View, theme, editor.EndsWith("materials") ? "materials" : editor.EndsWith("drops") ? "drops" : editor.EndsWith("fate") ? "fate" : editor.EndsWith("equipment") ? "equipment" : "wheel", 980, 680);
             Check(ReferenceEquals(((Control)page.View).Foreground, Application.Current.FindResource(ModuleVisualResources.TextBrush)), "Page does not inherit active host theme");
             Check(client.Writes == 0 && host.Writes == 0, "Render/theme change wrote game");
         }
@@ -653,12 +733,13 @@ internal static class Program
     }
     private static async Task UiContracts()
     {
-        foreach (var editor in new[] { ExpeditionGameAdapter.MaterialsId, ExpeditionGameAdapter.WheelId, ExpeditionGameAdapter.DropsId })
+        foreach (var editor in new[] { ExpeditionGameAdapter.MaterialsId, ExpeditionGameAdapter.WheelId, ExpeditionGameAdapter.DropsId, ExpeditionGameAdapter.FateId, ExpeditionGameAdapter.EquipmentId })
         {
             var client = new FakeClient(); var adapter = new ExpeditionGameAdapter(client); var host = new Host { Adapter = adapter };
             using var page = adapter.CreateEditorPage(editor, Context(host)); await Call(page, "RefreshAsync");
             var root = (Grid)((UserControl)page.View).Content;
-            Check(root.RowDefinitions.Count == 4 && root.Children.Cast<UIElement>().All(child => Grid.GetRow(child) < 4), "Removed footer left a layout row");
+            var layoutRows = editor is ExpeditionGameAdapter.FateId or ExpeditionGameAdapter.EquipmentId ? 3 : 4;
+            Check(root.RowDefinitions.Count == layoutRows && root.Children.Cast<UIElement>().All(child => Grid.GetRow(child) < layoutRows), "Removed footer left a layout row");
             var frame = new Border { Child = page.View, Width = 980, Height = 680 };
             try
             {
@@ -683,17 +764,25 @@ internal static class Program
                     Descendants<Expander>(root).Single().IsExpanded = true; await Layout(frame);
                     Check(scroll.ScrollableHeight > 0, "Expanded compact wheel settings cannot scroll");
                 }
+                if (editor is ExpeditionGameAdapter.FateId or ExpeditionGameAdapter.EquipmentId)
+                {
+                    var buttons = root.Children.OfType<WrapPanel>().Single().Children.OfType<Button>().ToArray();
+                    Check(buttons.Select(button => button.Content).SequenceEqual(new[] { "刷新", "应用规则", "恢复原规则" }), "New toolbar labels/order");
+                    Check(buttons.All(button => button.Margin == ModuleVisualResources.InlineControlSpacing), "New toolbar spacing differs");
+                    frame.Width = 460; frame.Height = 430; await Layout(frame);
+                    Check(buttons.Last().TranslatePoint(new(buttons.Last().ActualWidth, 0), root).X <= root.ActualWidth, "New toolbar clipped");
+                }
                 Check(host.Writes == 0 && client.Writes == 0, "UI layout wrote data");
             }
             finally { frame.Child = null; }
         }
         foreach (var theme in new[] { ApplicationTheme.Light, ApplicationTheme.Dark })
-        foreach (var editor in new[] { ExpeditionGameAdapter.WheelId, ExpeditionGameAdapter.DropsId })
+        foreach (var editor in new[] { ExpeditionGameAdapter.WheelId, ExpeditionGameAdapter.DropsId, ExpeditionGameAdapter.FateId, ExpeditionGameAdapter.EquipmentId })
         {
             new ThemeService().Apply(theme);
             var client = new FakeClient(); var adapter = new ExpeditionGameAdapter(client); var host = new Host { Adapter = adapter };
             using var page = adapter.CreateEditorPage(editor, Context(host)); await Call(page, "RefreshAsync");
-            await Render(page.View, theme, editor == ExpeditionGameAdapter.WheelId ? "wheel-compact" : "drops-compact", 460, 430);
+            await Render(page.View, theme, editor == ExpeditionGameAdapter.WheelId ? "wheel-compact" : editor == ExpeditionGameAdapter.FateId ? "fate-compact" : editor == ExpeditionGameAdapter.EquipmentId ? "equipment-compact" : "drops-compact", 460, 430);
         }
         new ThemeService().Apply(ApplicationTheme.Light);
         Check(DropsPage.CalculateWheelOffset(100, 1000, 300, -120, 3) == 148, "System line count ignored");
@@ -767,7 +856,7 @@ internal static class Program
         using var registry = new GameAdapterRegistry(root);
         Check(registry.LoadErrors.Count == 0, "Actual host loader rejected module: " + string.Join(";", registry.LoadErrors));
         var adapter = registry.FindById("game.play-again-expedition")!;
-        Check(adapter is ICoordinatedGameEditorPageProvider && adapter.Editors.Count == 3, "Host missed module contract");
+        Check(adapter is ICoordinatedGameEditorPageProvider && adapter.Editors.Count == 5, "Host missed module contract");
         foreach (var editor in adapter.Editors)
         {
             using var page = ((IGameEditorPageFactoryProvider)adapter).CreateEditorPage(editor.Id, Context());
@@ -828,6 +917,17 @@ internal sealed class FakeClient : IExpeditionClient
     { Reads++; return new(new(new(1, 1, "", "", ""), default), _drops, !_drops.IsEmpty, true, "当前使用游戏原规则；仅勾选要修改的项目。", DropProfile.Options.ToDictionary(option => option.Path, option => DropProfile.Format(option.Default) + "%")); }
     public void ConfigureDrops(GameProcessContext process, DropsSnapshot read, DropProfile profile) { Writes++; _drops = profile; }
     public void ResetDrops(GameProcessContext process, DropsSnapshot read) { Writes++; _drops = DropProfile.Empty; }
+    private FateProfile _fate = FateProfile.Default;
+    private bool _fateInstalled;
+    public FateSnapshot ReadFate(GameProcessContext process)
+    { Reads++; return new(new(new(1, 1, "", "", ""), default), _fate, FateProfile.Default, _fateInstalled, true, "命格：保留百抽神话保底。"); }
+    public void ConfigureFate(GameProcessContext process, FateSnapshot read, FateProfile profile) { Writes++; _fate = profile; _fateInstalled = true; }
+    public void ResetFate(GameProcessContext process, FateSnapshot read) { Writes++; _fate = FateProfile.Default; _fateInstalled = false; }
+    private bool _equipmentInstalled;
+    public EquipmentSnapshot ReadEquipment(GameProcessContext process)
+    { Reads++; return new(new(new(1, 1, "", "", ""), default), _equipmentInstalled, true, true, "新装备词条取满值，旧装备不变。"); }
+    public void ConfigureEquipment(GameProcessContext process, EquipmentSnapshot read) { Writes++; _equipmentInstalled = true; }
+    public void ResetEquipment(GameProcessContext process, EquipmentSnapshot read) { Writes++; _equipmentInstalled = false; }
 }
 internal class OldHost : IGameEditorHostServices
 {

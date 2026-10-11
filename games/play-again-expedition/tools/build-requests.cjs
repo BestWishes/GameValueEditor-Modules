@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { buildMaterialsRequest } = require('../../../experiments/play-again-expedition/src/all-materials-controller.cjs');
 const { buildProbabilityRequest } = require('../../../experiments/play-again-expedition/src/probability-controller.cjs');
+const { buildFateRequest, buildEquipmentRequest } = require('../../../experiments/play-again-expedition/src/fate-controller.cjs');
 const config = { processId: 1, executablePath: 'fixed-template-exe', archivePath: 'fixed-template-asar', profilePath: 'fixed-template-profile' };
 const scope = 'a'.repeat(64);
 const buildWheelRequest = (context, operation, input) => buildProbabilityRequest(context, operation, input, 'wheel');
@@ -18,6 +19,14 @@ const samples = {
   'drops-inspect': [buildDropsRequest, 'inspect', {}],
   'drops-configure': [buildDropsRequest, 'configure', { scopeHash: scope, revision: 0, profile: { drops: { guardianTicketPercent: 50 } } }],
   'drops-reset': [buildDropsRequest, 'reset', { scopeHash: scope, revision: 0 }],
+  'fate-inspect': [buildFateRequest, 'inspect', {}],
+  'fate-probe': [buildFateRequest, 'probe', {}],
+  'fate-configure': [buildFateRequest, 'configure', { scopeHash: scope, revision: 0, profile: { blue: 70, purple: 25, immortal: 4, mythic: 1 } }],
+  'fate-reset': [buildFateRequest, 'reset', { scopeHash: scope, revision: 0 }],
+  'equipment-inspect': [buildEquipmentRequest, 'inspect', {}],
+  'equipment-probe': [buildEquipmentRequest, 'probe', {}],
+  'equipment-configure': [buildEquipmentRequest, 'configure', { scopeHash: scope, revision: 0, profile: { enabled: true } }],
+  'equipment-reset': [buildEquipmentRequest, 'reset', { scopeHash: scope, revision: 0 }],
 };
 function buildTemplates() {
   const templates = {};
@@ -35,6 +44,6 @@ if (require.main === module) {
   const output = path.resolve(process.argv[2]);
   fs.mkdirSync(path.dirname(output), { recursive: true });
   fs.writeFileSync(output, JSON.stringify(buildTemplates()), 'utf8');
-  console.log('Embedded eight fixed requests; no game/profile access.');
+  console.log('Embedded sixteen fixed requests; no game/profile access.');
 }
 module.exports = { buildTemplates, config, samples };

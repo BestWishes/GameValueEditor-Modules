@@ -17,7 +17,8 @@ function fixture() {
     platform: { read: () => storage.get('zseb-expedition-v1'), save() { saves++; throw Error('unexpected save'); } } };
   const window = { expedition: game, performance: { timeOrigin: 100 } };
   const renderer = vm.createContext({ window, localStorage: { get length() { return storage.size; },
-    key: i => [...storage.keys()][i], getItem: key => storage.get(key) ?? null } });
+    key: i => [...storage.keys()][i], getItem: key => storage.get(key) ?? null } },
+    { codeGeneration: { strings: false, wasm: false } });
   const preferences = { contextIsolation: true, nodeIntegration: false };
   const contents = { getURL: () => 'expedition://game/index.html', getLastWebPreferences: () => preferences,
     async executeJavaScriptInIsolatedWorld(world, scripts, gesture) {
@@ -128,7 +129,12 @@ test('new controller source can upgrade only a previously uninstalled metadata c
   const next = await f.run('inspect'); assert.notEqual(next.scopeHash, old.scopeHash); assert.equal(next.probability.report.installed, false);
   await assert.rejects(f.run('configure', f.input(old)), /READ_RECEIPT_SCOPE_CHANGED/);
   await f.run('configure', f.input(next)); f.window[key].implementationVersion = 1;
-  await assert.rejects(f.run('inspect'), /IMPLEMENTATION_CHANGED_RESTART_REQUIRED/);
+  const readable = await f.run('inspect'); assert.equal(readable.probability.report.installed, true);
+  await assert.rejects(f.run('configure', f.input(readable)), /IMPLEMENTATION_CHANGED_RESTORE_REQUIRED/);
+  const restored = await f.run('reset', { scopeHash: readable.scopeHash, revision: readable.probability.revision });
+  assert.equal(restored.probability.outcome.restored, true);
+  const upgraded = await f.run('inspect'); assert.notEqual(upgraded.scopeHash, readable.scopeHash);
+  await f.run('configure', f.input(upgraded));
 });
 test('Probe is a fixed copy-only operation and refuses an unknown constructor', async () => {
   const f = fixture(), before = JSON.stringify(f.state), read = await f.run('inspect');
@@ -136,6 +142,22 @@ test('Probe is a fixed copy-only operation and refuses an unknown constructor', 
   assert.equal(JSON.stringify(f.state), before); assert.equal(f.actions, 0); assert.equal(f.saves, 0);
   assert.equal((await f.run('inspect')).probability.report.installed, false);
   await f.run('configure', f.input(read)); await assert.rejects(f.run('probe'), /PROBE_NOT_SAFE/);
+});
+test('old wheel and drop controls can be restored independently before source upgrade', async () => {
+  const f = fixture(), key = Symbol.for('GameValueEditor.PlayAgainExpedition.ProbabilitySession.v1');
+  const first = await f.run('inspect'); await f.run('configure', f.input(first), 'drops');
+  const next = await f.run('inspect');
+  await f.run('configure', { scopeHash: next.scopeHash, revision: next.probability.revision,
+    profile: { wheelBonus: { doublePercent: 25, marqueePercent: 0 } } }, 'wheel');
+  f.window[key].implementationVersion = 14;
+  const old = await f.run('inspect'), wheelReset = await f.run('reset', { scopeHash: old.scopeHash, revision: old.probability.revision }, 'wheel');
+  assert.equal(wheelReset.probability.report.namespaces.wheel.enabled, false);
+  assert.equal(wheelReset.probability.report.namespaces.drops.enabled, true);
+  assert.equal(f.window[key].implementationVersion, 14);
+  await f.run('reset', { scopeHash: wheelReset.scopeHash, revision: wheelReset.probability.revision }, 'drops');
+  const upgraded = await f.run('inspect'); assert.notEqual(upgraded.scopeHash, old.scopeHash);
+  assert.equal(f.window[key].implementationVersion, 16);
+  assert.equal(f.actions, 0); assert.equal(f.saves, 0);
 });
 test('copy-only probe rejects arbitrary test source/profile inputs', () => {
   assert.throws(() => buildProbabilityRequest(config, 'probe', { expression: 'code' }), /UNKNOWN/);

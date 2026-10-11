@@ -98,4 +98,10 @@ internal interface IExpeditionClient
     DropsSnapshot ReadDrops(GameProcessContext process);
     void ConfigureDrops(GameProcessContext process, DropsSnapshot read, DropProfile profile);
     void ResetDrops(GameProcessContext process, DropsSnapshot read);
+    FateSnapshot ReadFate(GameProcessContext process);
+    void ConfigureFate(GameProcessContext process, FateSnapshot read, FateProfile profile);
+    void ResetFate(GameProcessContext process, FateSnapshot read);
+    EquipmentSnapshot ReadEquipment(GameProcessContext process);
+    void ConfigureEquipment(GameProcessContext process, EquipmentSnapshot read);
+    void ResetEquipment(GameProcessContext process, EquipmentSnapshot read);
 }

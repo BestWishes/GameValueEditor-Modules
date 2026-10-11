@@ -9,22 +9,28 @@ public sealed class ExpeditionGameAdapter : ICoordinatedGameEditorPageProvider,
     internal const string MaterialsId = "game.play-again-expedition.materials";
     internal const string WheelId = "game.play-again-expedition.lucky-wheel";
     internal const string DropsId = "game.play-again-expedition.drops";
+    internal const string FateId = "game.play-again-expedition.fate";
+    internal const string EquipmentId = "game.play-again-expedition.equipment";
     internal const string WheelEntity = "session";
     internal const string WheelField = "configuration";
     internal static readonly string WheelKey = ModuleFieldKey.Create(WheelId, WheelEntity, WheelField);
     internal static readonly string DropsKey = ModuleFieldKey.Create(DropsId, WheelEntity, WheelField);
+    internal static readonly string FateKey = ModuleFieldKey.Create(FateId, WheelEntity, WheelField);
+    internal static readonly string EquipmentKey = ModuleFieldKey.Create(EquipmentId, WheelEntity, WheelField);
     private static readonly object WriteGate = new();
     private readonly IExpeditionClient _client;
     public ExpeditionGameAdapter() : this(new ExpeditionClient()) { }
     internal ExpeditionGameAdapter(IExpeditionClient client) => _client = client;
     public string Id => "game.play-again-expedition";
     public string DisplayName => "再刷一把：远征专属修改模块";
-    public string Description => "材料数量、大转盘与掉落规则；直接接入正常启动的原游戏，无需启动参数或重开。";
+    public string Description => "材料、大转盘、掉落、命格与新装备词条规则；直接接入正常启动的原游戏，无需启动参数或重开。";
     public IReadOnlyList<GameEditorDescriptor> Editors { get; } =
     [
         new(MaterialsId, "材料", GameEditorKind.Custom, 100, "修改 29 项材料数量并调用游戏自身保存流程。"),
         new(WheelId, "大转盘", GameEditorKind.Custom, 200, "调整奖格与额外奖励概率，重启游戏恢复原规则。", true),
-        new(DropsId, "掉落", GameEditorKind.Custom, 300, "总加成、战斗规则、矿区与奶牛关；只影响当前会话。", true)
+        new(DropsId, "掉落", GameEditorKind.Custom, 300, "总加成、战斗规则、矿区与奶牛关；只影响当前会话。", true),
+        new(FateId, "命格", GameEditorKind.Custom, 400, "单抽和十连抽的四档概率；保留原生百抽神话保底。", true),
+        new(EquipmentId, "装备", GameEditorKind.Custom, 500, "新生成武器和防具的词条随机数值取满，不改现有装备。", true)
     ];
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint) => _client.Supports(process, fingerprint);
     public IGameEditorPage CreateEditorPage(string editorId, GameEditorPageContext context) => editorId switch
@@ -32,16 +38,22 @@ public sealed class ExpeditionGameAdapter : ICoordinatedGameEditorPageProvider,
         MaterialsId => new MaterialsPage(this, context),
         WheelId => new WheelPage(this, context),
         DropsId => new DropsPage(this, context),
+        FateId => new FatePage(this, context),
+        EquipmentId => new EquipmentPage(this, context),
         _ => throw new InvalidOperationException("当前模块没有这个内容页面。")
     };
     internal MaterialsSnapshot ReadMaterials(GameProcessContext process) => _client.ReadMaterials(process);
     internal WheelSnapshot ReadWheel(GameProcessContext process) => _client.ReadWheel(process);
     internal DropsSnapshot ReadDrops(GameProcessContext process) => _client.ReadDrops(process);
+    internal FateSnapshot ReadFate(GameProcessContext process) => _client.ReadFate(process);
+    internal EquipmentSnapshot ReadEquipment(GameProcessContext process) => _client.ReadEquipment(process);
     public GameEditorFieldPolicy? GetFieldPolicy(string editorId, string entityId, string fieldId) => editorId switch
     {
         MaterialsId when fieldId == "quantity" => new(false, false),
         WheelId when entityId == WheelEntity && fieldId == WheelField => new(true, false),
         DropsId when entityId == WheelEntity && fieldId == WheelField => new(true, false),
+        FateId when entityId == WheelEntity && fieldId == WheelField => new(true, false),
+        EquipmentId when entityId == WheelEntity && fieldId == WheelField => new(true, false),
         _ => null
     };
     public AdapterFieldValue ReadField(GameProcessContext process, string fieldKey)
@@ -59,6 +71,10 @@ public sealed class ExpeditionGameAdapter : ICoordinatedGameEditorPageProvider,
         }
         if (editor == DropsId && entity == WheelEntity && field == WheelField)
         { var drops = ReadDrops(process); return new(fieldKey, drops.Profile.ToJson(), drops.Status + drops.Receipt.ConnectionWarning); }
+        if (editor == FateId && entity == WheelEntity && field == WheelField)
+        { var fate = ReadFate(process); return new(fieldKey, fate.Profile.ToJson(), fate.Status + fate.Receipt.ConnectionWarning); }
+        if (editor == EquipmentId && entity == WheelEntity && field == WheelField)
+        { var gear = ReadEquipment(process); return new(fieldKey, gear.Installed ? EquipmentPage.EnabledJson : "restore", gear.Status + gear.Receipt.ConnectionWarning); }
         throw new InvalidOperationException("模块字段语义键无效。");
     }
     public AdapterFieldValue WriteField(GameProcessContext process, string fieldKey, string displayValue)
@@ -98,6 +114,29 @@ public sealed class ExpeditionGameAdapter : ICoordinatedGameEditorPageProvider,
                 return new(fieldKey, (profile ?? DropProfile.Empty).ToJson(), (profile is null ? "已恢复掉落原规则；大转盘设置不变" : "掉落规则已应用，仅当前游戏会话有效") + _client.ConnectionWarning);
             }
         }
+        if (editor == FateId && entity == WheelEntity && field == WheelField)
+        {
+            var profile = displayValue == "restore" ? null : FateProfile.Parse(displayValue);
+            lock (WriteGate)
+            {
+                var snapshot = ReadFate(process);
+                if (profile is null) _client.ResetFate(process, snapshot); else _client.ConfigureFate(process, snapshot, profile);
+                return new(fieldKey, (profile ?? snapshot.Original).ToJson(),
+                    (profile is null ? "已恢复命格原规则；其它规则不变" : "命格概率已应用；保留游戏百抽神话保底") + _client.ConnectionWarning);
+            }
+        }
+        if (editor == EquipmentId && entity == WheelEntity && field == WheelField)
+        {
+            var restore = displayValue == "restore";
+            if (!restore) EquipmentPage.ValidateProfile(displayValue);
+            lock (WriteGate)
+            {
+                var snapshot = ReadEquipment(process);
+                if (restore) _client.ResetEquipment(process, snapshot); else _client.ConfigureEquipment(process, snapshot);
+                return new(fieldKey, restore ? "restore" : EquipmentPage.EnabledJson,
+                    (restore ? "已恢复新装备随机词条数值；已有装备保留" : "新生成装备词条按原公式取满；现有装备不变") + _client.ConnectionWarning);
+            }
+        }
         throw new InvalidOperationException("模块字段语义键无效。");
     }
     private static void Parse(string key, out string editor, out string entity, out string field)
@@ -117,7 +156,7 @@ public sealed class ExpeditionGameAdapter : ICoordinatedGameEditorPageProvider,
                 supported ? "已按名称定位当前远征实例；不使用旧版本文件指纹限制小更新。材料和概率在刷新时按当前接口定位。" : "没有找到选中进程所属的唯一远征实例，请连接正在运行的游戏。"),
             new("运行时直接接入入口", endpoint ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Warning,
                 endpoint ? "原游戏提供已验证的接入入口；刷新时自动接入，无需启动参数。此诊断未启用接口或执行游戏脚本。" : "运行时入口不可用、权限不足或端口 9229 被占用，已拒绝猜测入口；不会连接或关闭其它程序。"),
-            new("内容页面", GameCompatibilityDiagnosticStatus.Information, "材料：原生保存；大转盘、掉落：独立会话规则。诊断没有抽奖、修改数量、保存或读取存档内容。")
+            new("内容页面", GameCompatibilityDiagnosticStatus.Information, "材料：原生保存；大转盘、掉落、命格、新装备词条：独立会话规则。诊断没有抽奖、修改数量、保存或读取存档内容。")
         ];
     }
 }

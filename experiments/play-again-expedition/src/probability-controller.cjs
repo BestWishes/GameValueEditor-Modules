@@ -5,6 +5,7 @@ const { createProbabilityRuntime } = require('./probability-runtime.cjs');
 const { assertReadonlyContext } = require('./read-context-contract.cjs');
 const { validateNativeDrops } = require('./drops-native-validation.cjs');
 const { discoverProbabilitySites } = require('./probability-sites.cjs');
+const { createWheelRngBridge } = require('./wheel-rng-bridge.cjs');
 
 function buildProbabilityRequest(config, operation, input = {}, namespace) {
   if (!['inspect', 'probe', 'configure', 'reset'].includes(operation)) throw Error('UNKNOWN_PROBABILITY_OPERATION');
@@ -19,7 +20,13 @@ function buildProbabilityRequest(config, operation, input = {}, namespace) {
     const profile = createProbabilityModel().validate(input.profile);
     if (namespace === 'wheel' && profile.drops !== undefined || namespace === 'drops' && Object.keys(profile).some(key => key !== 'drops')) throw Error('PROBABILITY_NAMESPACE_MISMATCH');
   }
-  const runtimeSource = `(${createProbabilityRuntime.toString()})(${createProbabilityModel.toString()},${createProbabilitySession.toString()},${validateNativeDrops.toString()},${discoverProbabilitySites.toString()})`;
+  // Keep every validation/control factory strict. Only the fixed native RNG
+  // bridge literal is compiled outside strict scope; CSP permits this without
+  // eval/Function or changes to the game's security settings.
+  const strictFactory = factory => `(function(){'use strict';return (${factory.toString()});})()`;
+  const sessionSource = `(function(bridge){'use strict';const createSession=(${createProbabilitySession.toString()});
+    return (engine,model,context)=>createSession(engine,model,context,bridge);})(${createWheelRngBridge.toString()})`;
+  const runtimeSource = `${strictFactory(createProbabilityRuntime)}(${strictFactory(createProbabilityModel)},${sessionSource},${strictFactory(validateNativeDrops)},${strictFactory(discoverProbabilitySites)})`;
   const expression = `(async function () {
     const config = ${JSON.stringify(config)}, operation = ${JSON.stringify(operation)}, input = ${JSON.stringify(input)};
     const namespace = ${JSON.stringify(namespace ?? null)};
@@ -33,7 +40,7 @@ function buildProbabilityRequest(config, operation, input = {}, namespace) {
     const context = (${assertReadonlyContext.toString()})(contents.getLastWebPreferences(), electron.app.getAppPath(), config.archivePath);
     const hash = value => process.mainModule.require('node:crypto').createHash('sha256').update(value).digest('hex');
     const call = async (op, args) => {
-      const code = "'use strict'; (() => { try { return { ok: true, result: (" + ${JSON.stringify(runtimeSource)} + ")(" + JSON.stringify(op) + "," + JSON.stringify(args) + "," + JSON.stringify(config.archivePath) + ") }; } catch (error) { return { ok: false, error: String(error.message) }; } })()";
+      const code = "(() => { try { return { ok: true, result: (" + ${JSON.stringify(runtimeSource)} + ")(" + JSON.stringify(op) + "," + JSON.stringify(args) + "," + JSON.stringify(config.archivePath) + ") }; } catch (error) { return { ok: false, error: String(error.message) }; } })()";
       const packet = await contents.executeJavaScriptInIsolatedWorld(999, [{ code }], false);
       if (packet?.ok !== true) throw Error(packet?.error || 'RENDERER_RESULT_UNCONFIRMED');
       return packet.result;

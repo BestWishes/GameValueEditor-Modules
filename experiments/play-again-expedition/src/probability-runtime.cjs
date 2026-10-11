@@ -50,9 +50,15 @@ function createProbabilityRuntime(modelFactory, sessionFactory, dropsValidator, 
       if (operation !== 'inspect') fail('PROBABILITY_SESSION_CHANGED');
       registry = null; // Old owner will pass through, never retarget its hooks.
     }
-    if (registry && registry.implementationVersion !== 14) {
-      if (operation !== 'inspect' || registry.control.inspect().installed) fail('PROBABILITY_IMPLEMENTATION_CHANGED_RESTART_REQUIRED');
-      registry = null; // Upgrade only an uninstalled read-only controller; invalidate old receipts.
+    if (registry && registry.implementationVersion !== 16) {
+      if (registry.control.inspect().installed) {
+        // Keep old controls readable and restorable. Do not stack new hooks or
+        // silently erase the independently configured drop rules on an upgrade.
+        if (!['inspect', 'reset'].includes(operation)) fail('PROBABILITY_IMPLEMENTATION_CHANGED_RESTORE_REQUIRED');
+      } else {
+        if (operation !== 'inspect') fail('READ_RECEIPT_SCOPE_CHANGED');
+        registry = null; // Invalidate old receipts when creating the new controller.
+      }
     }
     const generation = registry?.generation ?? previousGeneration + 1;
     if (!Number.isFinite(window.performance?.timeOrigin)) fail('RENDERER_IDENTITY_UNCONFIRMED');
@@ -60,7 +66,7 @@ function createProbabilityRuntime(modelFactory, sessionFactory, dropsValidator, 
     if (!registry) {
       const discovery = typeof siteFactory === 'function' ? siteFactory(engine, model, archivePath) : null;
       const control = sessionFactory(engine, model, { archivePath, ...(discovery ? { sites: discovery.sites } : {}), assertCurrent: isCurrent });
-      registry = { brand: 'gve-probability-v1', implementationVersion: 14, discovery, engine, state, platform, slot, rewardClockId, anchor, generation, revision: 0, control };
+      registry = { brand: 'gve-probability-v1', implementationVersion: 16, discovery, engine, state, platform, slot, rewardClockId, anchor, generation, revision: 0, control };
       // Inspection only caches module-owned identity. It does not install hooks or change a save.
       Object.defineProperty(window, registryKey, { value: registry, configurable: true, writable: true });
     }
@@ -168,11 +174,23 @@ function createProbabilityRuntime(modelFactory, sessionFactory, dropsValidator, 
           ensure(copy.state.materials.wheelTickets === coins - 1);
           return copy.luckyWheelResults().map(row => model.groupOf(row.prize));
         }); ensure(tested.result.includes(group) && tested.report.hits.wheelPrize === 1 && tested.report.hits.wheelBonus === 1);
+        const batch = controlled({ wheel: { groupPercent: Object.fromEntries(groups.map(key => [key, key === group ? 100 : 0])) },
+          wheelBonus: { doublePercent: 0, marqueePercent: 0 } }, null, copy => {
+          const coins = copy.state.materials.wheelTickets, action = copy.spinLuckyWheel(10);
+          ensure(action.ok === true && action.count === 10 && copy.state.materials.wheelTickets === coins - 10);
+          const spins = copy.state.luckyWheel.pending?.spins;
+          ensure(Array.isArray(spins) && spins.length === 10);
+          return copy.luckyWheelResults().map(row => model.groupOf(row.prize));
+        }); ensure(batch.result.length === 10 && batch.result.every(value => value === group) &&
+          batch.report.hits.wheelPrize === 10 && batch.report.hits.wheelBonus === 10);
       }
       for (const [doublePercent, marqueePercent, bonus] of [[100, 0, 'double'], [0, 100, 'marquee'], [0, 0, null]]) {
         const tested = controlled({ wheelBonus: { doublePercent, marqueePercent } }, null, copy => {
           copy.spinLuckyWheel(); return copy.state.luckyWheel.pending.bonus;
         }); ensure(tested.result === bonus && tested.report.hits.wheelBonus === 1);
+        const batch = controlled({ wheelBonus: { doublePercent, marqueePercent } }, null, copy => {
+          copy.spinLuckyWheel(10); return copy.state.luckyWheel.pending.spins.map(spin => spin.bonus);
+        }); ensure(batch.result.length === 10 && batch.result.every(value => value === bonus) && batch.report.hits.wheelBonus === 10);
       }
       for (const percent of [0, 100]) {
         const guard = controlled({ drops: { guardianTicketPercent: percent } }, copy => {

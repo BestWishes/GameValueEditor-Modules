@@ -29,7 +29,7 @@ $manifestPath = Join-Path $moduleRoot 'module.json'
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($manifest.id -cne 'game.play-again-expedition' -or $manifest.version -cne $moduleVersion -or $manifest.assemblyFile -cne $dllName -or
     $manifest.hostApiVersion -ne 8 -or [version]$manifest.minimumHostVersion -lt [version]'0.5.1' -or
-    -not (@($manifest.editors.displayName) -join ',' -ceq '材料,大转盘,掉落')) { throw 'Unexpected module manifest.' }
+    -not (@($manifest.editors.displayName) -join ',' -ceq '材料,大转盘,掉落,命格,装备')) { throw 'Unexpected module manifest.' }
 if ([Reflection.AssemblyName]::GetAssemblyName($dllPath).Version -ne [version]($moduleVersion + '.0')) { throw 'DLL version differs from manifest.' }
 $archivePath = Join-Path $outputRoot "GameValueEditor.Module.PlayAgainExpedition-v$moduleVersion-local.zip"
 $archive = [IO.Compression.ZipFile]::Open($archivePath, [IO.Compression.ZipArchiveMode]::Create)

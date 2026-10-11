@@ -121,7 +121,9 @@ function bundledCall(method, name, column) {
   };
   const context = vm.createContext({ engine });
   const statement = name.includes('Engine.') ? `class Engine { ${method}(){return engine.rng();} }; Object.setPrototypeOf(engine,Engine.prototype); engine.${method}=Engine.prototype.${method};` :
-    `function ${name}(){return engine.rng();} engine.${method}=function(){return ${name}();};`;
+    name === 'chooseWheelIndex' ?
+      `function chooseWheelIndex(board,rng){return rng();} engine.${method}=function(){return chooseWheelIndex(engine.state.luckyWheel.board,engine.rng);};` :
+      `function ${name}(){return engine.rng();} engine.${method}=function(){return ${name}();};`;
   const filename = 'C:/game/app.asar/app/preview.js.jsc';
   vm.runInContext(statement, context, { filename }); engine[method](25400);
   vm.runInContext(' '.repeat(column - actualColumn) + statement, vm.createContext({ engine }), { filename });

@@ -7,7 +7,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>GameValueEditor.Modules.PlayAgainExpedition</AssemblyName>
     <RootNamespace>GameValueEditor.Modules.PlayAgainExpedition</RootNamespace>
-    <ModuleVersion Condition="'$(ModuleVersion)' == ''">0.0.6</ModuleVersion>
+    <ModuleVersion Condition="'$(ModuleVersion)' == ''">0.0.7</ModuleVersion>
     <Version>$(ModuleVersion)</Version>
     <NodeExecutable Condition="'$(NodeExecutable)' == ''">node</NodeExecutable>
   </PropertyGroup>
