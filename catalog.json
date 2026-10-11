@@ -625,10 +625,10 @@
     },
     {
       "id": "game.play-again-expedition",
-      "version": "0.0.6",
+      "version": "0.0.7",
       "displayName": "再刷一把：远征专属修改模块",
       "gameDisplayName": "再刷一把：远征",
-      "description": "材料、大转盘、掉落三个独立页面；直接接入正常启动的原游戏，按当前运行接口定位，无需启动参数或重开。",
+      "description": "材料、大转盘、掉落、命格、装备五个独立页面；新生成装备、宝石、时装、徽章词条取满值。直接接入正常启动的原游戏，无需启动参数或重开。",
       "hostApiVersion": 8,
       "minimumHostVersion": "0.5.2",
       "processNames": [
@@ -667,6 +667,18 @@
           "displayName": "掉落",
           "order": 300,
           "sessionOnly": true
+        },
+        {
+          "id": "game.play-again-expedition.fate",
+          "displayName": "命格",
+          "order": 400,
+          "sessionOnly": true
+        },
+        {
+          "id": "game.play-again-expedition.equipment",
+          "displayName": "装备",
+          "order": 500,
+          "sessionOnly": true
         }
       ],
       "supportsUnlistedBuildValidation": true,
@@ -680,10 +692,66 @@
           "latestContributionDate": "2026-10-09"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/play-again-expedition-v0.0.6/GameValueEditor.Module.PlayAgainExpedition-v0.0.6.zip",
-      "sizeBytes": 162034,
-      "sha256": "ED9B204CD4FCEFF7886A85AB0B03D3825CE5C262E340B01006C60C93F559B4F6",
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/play-again-expedition-v0.0.7/GameValueEditor.Module.PlayAgainExpedition-v0.0.7.zip",
+      "sizeBytes": 221902,
+      "sha256": "DE9377FC2001645224577499A2BE39CC67FAE9E2C5F2F418DF629001B3163039",
       "releases": [
+        {
+          "version": "0.0.7",
+          "hostApiVersion": 8,
+          "supportsUnlistedBuildValidation": true,
+          "minimumHostVersion": "0.5.2",
+          "maximumHostVersion": null,
+          "compatibleBuilds": [
+            {
+              "executableSha256": "A79F66A6F236B237E25C00DD9F8BA763F9BAD13E16CD3269DE2348EA7FFEF396",
+              "gameAssemblySha256": "",
+              "metadataSha256": "",
+              "packageSha256": "5A4F4E414BD06FC248CFE2AD30E7D9EE3B110968DB888FDB733CD57F78A6B294"
+            },
+            {
+              "executableSha256": "C7F68B5031E3022AE1A8DFD3AB8578FD57F7EE13097DF35ADD388CCC4DD0C540",
+              "gameAssemblySha256": "",
+              "metadataSha256": "",
+              "packageSha256": "5A4F4E414BD06FC248CFE2AD30E7D9EE3B110968DB888FDB733CD57F78A6B294"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.play-again-expedition.materials",
+              "displayName": "材料",
+              "order": 100,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.play-again-expedition.lucky-wheel",
+              "displayName": "大转盘",
+              "order": 200,
+              "sessionOnly": true
+            },
+            {
+              "id": "game.play-again-expedition.drops",
+              "displayName": "掉落",
+              "order": 300,
+              "sessionOnly": true
+            },
+            {
+              "id": "game.play-again-expedition.fate",
+              "displayName": "命格",
+              "order": 400,
+              "sessionOnly": true
+            },
+            {
+              "id": "game.play-again-expedition.equipment",
+              "displayName": "装备",
+              "order": 500,
+              "sessionOnly": true
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/play-again-expedition-v0.0.7/GameValueEditor.Module.PlayAgainExpedition-v0.0.7.zip",
+          "sizeBytes": 221902,
+          "sha256": "DE9377FC2001645224577499A2BE39CC67FAE9E2C5F2F418DF629001B3163039"
+        },
         {
           "version": "0.0.6",
           "hostApiVersion": 8,
