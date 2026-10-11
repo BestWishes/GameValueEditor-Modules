@@ -33,4 +33,25 @@
 - Node 408 项通过，0 失败、0 跳过；模块 C# 400 项通过。当前没有原游戏，额外五项实机只读身份检查明确跳过，不冒充本次实测；上一轮 405 项和原生消费者证据仍保留其当时范围。
 - SDK、四模块与 LiveTests Release 构建均 0 警告、0 错误；SDK 与当前宿主契约摘要完全一致。共享真实页面回归 186 项、纯兼容性 35 项通过。
 - 保留策略 0～5 个版本模拟、目录 StrictMode 8 项、包 Schema 19 项和四模块主题/清单检查通过。当前正式宿主原 ZIP 摘要仍为 `EFD0280C2C120540111F3D8B7A0DA7232358045DB441D97BF8CF541B8BCC22EA`。
-- 主程序无修改；正式发布只同步模块编号与说明，没有更改用户已测通过的业务实现。正式打包、线上验证与后续目录结果待完成后记录。
+- 主程序无修改；正式发布只同步模块编号与说明，没有更改用户已测通过的业务实现。正式打包、线上验证与后续目录结果见下面两节。
+
+### 第二遍：正式构建、上传与目录
+
+- 源码提交 `70b85b45f915f566ecadfddffd4c1765c96aeae8`；从干净提交构建，正式包仅有 DLL 与含真实贡献者的 module.json，221,902 字节。DLL ProductVersion 为 `0.0.7+70b85b45f915f566ecadfddffd4c1765c96aeae8`，带注释标签 `play-again-expedition-v0.0.7` 指向同一提交。
+- 正式 ZIP SHA-256：`DE9377FC2001645224577499A2BE39CC67FAE9E2C5F2F418DF629001B3163039`。内嵌十六个固定请求与最后本地 0.1.1 的资源逐字节一致，资源 SHA-256：`49556CCDD2D159EAE37EADD122DB4B8192D35B9C22794FFC62F72B4371139C2B`。
+- 完整宿主冒烟通过，包括生命周期、名称识别、页面保留/串行读取、字段协调、下载、扫描、关闭、主题/布局等；从四个真实正式 ZIP 加载并创建/释放 14 页（2/2/5/5）通过。没有重打另三个同版本资产。
+- [远征正式 Release](https://github.com/BestWishes/GameValueEditor-Modules/releases/tag/play-again-expedition-v0.0.7) 通过代理 `http://127.0.0.1:7897` 上传，随后独立 VerifyOnly 核验大小、摘要与本地一致；源码和注释标签已推送。只上传模块 ZIP，没有上传完整离线包。
+- 线上复验成功后才执行 CatalogOnly。目录提交 `d7ff3c37ed0caa99bdd2ba57e99dbf9f611c15fa` 已推送；公开 raw 目录与本地完整内容一致。远征稳定 ID、五编辑器、Host API 8、最低宿主 0.5.2、未登记构建的当前接口解析均已登记；其余三模块条目逐项比较不变。
+- 保留策略先预演、再执行；仅两个远征正式版本 0.0.7 / 0.0.6，均保留，没有删除 Release、Git 标签或本地旧包。目录/主题、StrictMode 8 项、包 Schema 19 项再次通过。
+- 离线打包回归 112 项、实际损坏 DLL / 错误页面注册两项负向集成再次通过。正式输入完整包、带目录的发行复验及最终现场检查见下一节。
+
+### 第三遍：发布后复验与正式完整包
+
+- `verify-release.ps1 -VerifyReleasedVersions` 完整通过：四模块当前清单与原正式资产的大小/SHA-256 匹配，SDK/四模块/LiveTests Release 构建、全部宿主冒烟以及四包/14 页加载再次通过。不重建已经上传的 ZIP，不覆盖不可变资产。
+- 远端注释标签指向源码 `70b85b45f915f566ecadfddffd4c1765c96aeae8`，目录提交 `d7ff3c37ed0caa99bdd2ba57e99dbf9f611c15fa` 已在远端 main。认证 API 再查两个远征 Release，旧 0.0.6 与新 0.0.7 资产的大小/摘要都与目录一致；另外三游戏各仍保留三版，没有被本次清理。
+- 使用原正式主程序输入、三个原正式模块与新远征正式模块生成 `D:/MyOtherProjects/GameValueEditor/dist/GameValueEditor-v0.5.2-202610116.zip`，99,505,640 字节。
+- 完整包 SHA-256：`F589959D286617C9A6488E1A32B63A993E664A8CD2F2D1AB8186D2F43D782CB0`。实际 DLL/页面和 EXE 启动通过，独立 VerifyOnly 再通过：`Verified / IntegrityVerified / ModulesVerified / StartupVerified / IsLatest=true`，`LatestStatus=Current`。
+- 包含主程序 0.5.2 / API 8、放置斩魔录 2.1.5、不问凡尘 1.3.5、最后纪元 0.5.6、远征 0.0.7；宿主原 ZIP 的源码提交仍为 `16a2c3fc6551caa126ed8518751bd4c5ad14115f`，不是本次模块提交。`LocalOnly=false` 表示全是正式资产输入，不表示完整包上传 GitHub。
+- 完整包冻结收据：宿主 `artifacts/offline-bundle-receipts/F589959D286617C9A6488E1A32B63A993E664A8CD2F2D1AB8186D2F43D782CB0.json`，在 ZIP 外保留。
+- 用户测试的 202610115 ZIP 摘要仍为 `EC3F067DF6AA44F00AC4E38392E58AFA656B78F62A00449D35B55129049BCA28`；正式宿主原 ZIP 摘要仍为 `EFD0280C2C120540111F3D8B7A0DA7232358045DB441D97BF8CF541B8BCC22EA`。没有覆盖旧包、改用户安装/游戏库、操作游戏或存档、修改 Steam 参数或关机。
+- 主程序工作树干净，源码 HEAD 保持 `47d10b81108f56f3254a6cfec93d84f3596f0dad`；没有遗留本轮验证助手或 9229/59321 监听。后续仅提交这份实际发布记录和使用说明，不改变已发布二进制或标签提交。
