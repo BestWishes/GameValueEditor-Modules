@@ -1,9 +1,9 @@
 {
   "id": "game.last-epoch",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "displayName": "Last Epoch 离线专属修改模块",
   "gameDisplayName": "最后纪元",
-  "description": "仅支持离线模式：人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、资源、异界进度与摄像头视野。更新后按当前游戏元数据重新定位字段，不以旧构建指纹拒绝整个模块。",
+  "description": "支持普通离线和完全离线角色，不要求启动参数。人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、资源、异界进度与摄像头视野；按当前游戏元数据定位，不以旧构建指纹拒绝整个模块。",
   "assemblyFile": "GameValueEditor.Modules.LastEpoch.dll",
   "hostApiVersion": 8,
   "supportsUnlistedBuildValidation": true,
@@ -12,6 +12,11 @@
     "Last Epoch"
   ],
   "compatibleBuilds": [
+    {
+      "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+      "gameAssemblySha256": "D5F9FB458F0E9878E697A92B590A586A52FD77E645F8BF87BB4F2B74C6C56567",
+      "metadataSha256": "81FF3419726BB5CF8E4F86EACE2B2DF2638EC4BC6FFED8A7A5DBAF09AA6F7BED"
+    },
     {
       "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
       "gameAssemblySha256": "1B720BDE6C6010BF02DE2F9724BC4C5E524C192B29E5AA160852B7993ED45449",

@@ -19,21 +19,23 @@ internal sealed class LastEpochRuntime : IDisposable
     private const uint PageExecuteReadWrite = 0x40;
     private const uint WaitObject0 = 0;
     private const uint WaitTimeout = 0x102;
-    private const int ExperienceHookDataOffset = 0xD0;
-    private const int ExperienceHookMetadataOffset = 0xF0;
-    private const int ItemDropHookDataOffset = 0xD0;
-    private const int ItemDropHookMetadataOffset = 0xF0;
-    private const int GoldQuantityHookDataOffset = 0xD0;
-    private const int GoldQuantityHookMetadataOffset = 0xF0;
+    private const int ExperienceHookDataOffset = 0x200;
+    private const int ExperienceHookMetadataOffset = 0x220;
+    private const int ItemDropHookDataOffset = 0x200;
+    private const int ItemDropHookMetadataOffset = 0x220;
+    private const int GoldQuantityHookDataOffset = 0x200;
+    private const int GoldQuantityHookMetadataOffset = 0x220;
+    private const int HookCharacterDataOffset = 0x240;
+    private const int HookAllocationSize = 0x300;
     private static readonly byte[] ExperienceGainOriginalBytes =
         [0x48, 0x89, 0x5C, 0x24, 0x20, 0x56, 0x41, 0x56, 0x41, 0x57, 0x48, 0x83, 0xEC, 0x30];
-    private static readonly byte[] ExperienceHookMagic = Encoding.ASCII.GetBytes("LEXPHK01");
+    private static readonly byte[] ExperienceHookMagic = Encoding.ASCII.GetBytes("LEXPHK02");
     private static readonly byte[] ItemDropChanceOriginalBytes =
         [0xF3, 0x0F, 0x11, 0x46, 0x30, 0x45, 0x0F, 0x57, 0xE4, 0x41, 0x80, 0x7E, 0x60, 0x00];
-    private static readonly byte[] ItemDropHookMagic = Encoding.ASCII.GetBytes("LEIDHK01");
+    private static readonly byte[] ItemDropHookMagic = Encoding.ASCII.GetBytes("LEIDHK02");
     private static readonly byte[] GoldQuantityOriginalBytes =
         [0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x56, 0x48, 0x8B, 0xEC, 0x48, 0x83, 0xEC, 0x58];
-    private static readonly byte[] GoldQuantityHookMagic = Encoding.ASCII.GetBytes("LEGQHK01");
+    private static readonly byte[] GoldQuantityHookMagic = Encoding.ASCII.GetBytes("LEGQHK02");
 
     private static readonly (string Key, string Name, int Attribute, int Property)[] CoreAttributes =
     [
@@ -104,11 +106,18 @@ internal sealed class LastEpochRuntime : IDisposable
     private readonly ulong _arrayClassGetRva;
     private readonly ulong _classGetElementClassRva;
     private readonly ulong _gcWbarrierSetFieldRva;
+    private readonly ulong _classGetStaticFieldDataRva;
+    private readonly ulong _fieldGetFlagsRva;
+    private readonly ulong _fieldGetTypeRva;
+    private readonly ulong _typeGetTypeRva;
     private readonly Dictionary<string, ulong> _classes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ulong> _methods = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ulong> _methodInfos = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ulong> _fieldOffsets = new(StringComparer.Ordinal);
     private IReadOnlyDictionary<string, string>? _localizedValues;
+    private SessionGuard? _session;
+    private readonly record struct SessionGuard(ulong OnlineAddress, ulong ServerAddress,
+        ulong TrackerSlot, ulong ActorSlot, int CharacterOffset, ulong CharacterData);
 
     public LastEpochRuntime(int processId)
     {
@@ -141,6 +150,10 @@ internal sealed class LastEpochRuntime : IDisposable
         _arrayClassGetRva = exports.GetRva("il2cpp_array_class_get");
         _classGetElementClassRva = exports.GetRva("il2cpp_class_get_element_class");
         _gcWbarrierSetFieldRva = exports.GetRva("il2cpp_gc_wbarrier_set_field");
+        _classGetStaticFieldDataRva = exports.GetRva("il2cpp_class_get_static_field_data");
+        _fieldGetFlagsRva = exports.GetRva("il2cpp_field_get_flags");
+        _fieldGetTypeRva = exports.GetRva("il2cpp_field_get_type");
+        _typeGetTypeRva = exports.GetRva("il2cpp_type_get_type");
     }
 
     public bool HasLoadedCharacter
@@ -158,6 +171,116 @@ internal sealed class LastEpochRuntime : IDisposable
         // their own current types/fields/methods; a changed optional hook cannot veto the whole package.
         _ = ResolveStaticFieldInfo(string.Empty, "PlayerFinder", "localPlayerDataTracker");
         ValidateInstanceField("CharacterDataTracker", "charData");
+        _ = ResolvePlayFlagAddress("_isOnlinePlay");
+        _ = ResolvePlayFlagAddress("IsServer");
+    }
+
+    public LastEpochPlayState ReadPlayState()
+    {
+        if (ReadBoolean(ResolvePlayFlagAddress("_isOnlinePlay")) || ReadBoolean(ResolvePlayFlagAddress("IsServer")))
+            return LastEpochPlayState.OnlinePlay;
+        var tracker = ResolveStaticFieldObject("", "PlayerFinder", "localPlayerDataTracker");
+        var data = tracker == 0 ? 0 : ReadObjectReferenceField(tracker, "charData");
+        var actor = ResolveStaticFieldObject("", "PlayerFinder", "playerActorComponent");
+        if (data == 0 || actor == 0) return LastEpochPlayState.WaitingForCharacter;
+        var info = ResolveNamedMethodInfo("LE.Data", "CharacterData", "get_IsOffline", 0);
+        var result = Call(ResolveNamedMethodRva("LE.Data", "CharacterData", "get_IsOffline", 0), data, info);
+        // Native bool uses AL; the other bits of RAX need not be initialized.
+        return (byte)result switch
+        {
+            1 => LastEpochPlayState.OfflineCharacter,
+            0 => LastEpochPlayState.OnlinePlay,
+            _ => throw new InvalidDataException("游戏返回的角色离线状态无法识别。")
+        };
+    }
+
+    public void BindOfflineSession()
+    {
+        var state = ReadPlayState();
+        if (state != LastEpochPlayState.OfflineCharacter)
+            throw new InvalidOperationException(state == LastEpochPlayState.OnlinePlay
+                ? "当前正在联机游玩；专属模块只修改离线角色。请在游戏中进入离线角色后刷新。"
+                : "当前尚未进入离线角色，请进入存档并等待场景加载完成后刷新。");
+        _session = new(ResolvePlayFlagAddress("_isOnlinePlay"), ResolvePlayFlagAddress("IsServer"),
+            ResolveStaticFieldAddress("", "PlayerFinder", "localPlayerDataTracker"),
+            ResolveStaticFieldAddress("", "PlayerFinder", "playerActorComponent"),
+            checked((int)ResolveFieldOffset(ResolveClass("", "CharacterDataTracker"), "charData", "CharacterDataTracker")),
+            GetCharacterData());
+        EnsureSessionCurrent();
+    }
+
+    private ulong ResolvePlayFlagAddress(string name)
+    {
+        var field = ResolveStaticFieldInfo("EHG.Multiplayer", "GameplayEnvironment", name);
+        if (Call(_typeGetTypeRva, Call(_fieldGetTypeRva, field)) != 2)
+            throw new InvalidDataException($"游戏状态字段 {name} 不再是布尔值。");
+        return ResolveStaticFieldAddress("EHG.Multiplayer", "GameplayEnvironment", name);
+    }
+
+    private ulong ResolveStaticFieldAddress(string ns, string className, string name)
+    {
+        var cacheKey = $"static|{ns}|{className}|{name}";
+        if (_fieldOffsets.TryGetValue(cacheKey, out var cached)) return cached;
+        var klass = ResolveClass(ns, className);
+        var field = ResolveFieldInfo(klass, name, className);
+        var flags = Call(_fieldGetFlagsRva, field);
+        var offset = Call(_fieldGetOffsetRva, field);
+        var data = Call(_classGetStaticFieldDataRva, klass);
+        if ((flags & 0x10) == 0 || (flags & 0x40) != 0 || offset > 0x10000 || data == 0)
+            throw new InvalidDataException($"无法解析游戏状态字段 {className}.{name}。");
+        return _fieldOffsets[cacheKey] = checked(data + offset);
+    }
+
+    private bool ReadBoolean(ulong address) => ReadByte(address) switch
+    {
+        0 => false, 1 => true,
+        _ => throw new InvalidDataException("当前游戏状态尚无法确认，请等待场景加载完成后刷新。")
+    };
+
+    private void EnsureSessionCurrent()
+    {
+        if (_session is not { } session) return;
+        var tracker = ReadUInt64(session.TrackerSlot);
+        if (ReadByte(session.OnlineAddress) != 0 || ReadByte(session.ServerAddress) != 0 || tracker == 0 ||
+            ReadUInt64(session.ActorSlot) == 0 || ReadUInt64(tracker + (ulong)session.CharacterOffset) != session.CharacterData)
+            throw new InvalidOperationException("当前角色已经退出或变化，本次操作已停止；请进入离线角色后刷新。");
+    }
+
+    private bool HookMatchesSession(ulong stub) => _session is { } session &&
+        ReadUInt64(stub + HookCharacterDataOffset) == session.CharacterData;
+
+    private SessionGuard CurrentSession => _session ?? throw new InvalidOperationException("尚未绑定当前离线角色。");
+
+    // Preserve scratch registers and flags. Return branches to an identically restored bypass.
+    private static List<int> EmitSessionGate(Emitter code, SessionGuard session, ulong characterAddress)
+    {
+        var denied = new List<int>();
+        code.Emit(0x9C, 0x50, 0x41, 0x53); // pushfq; push rax; push r11
+        foreach (var flag in new[] { session.OnlineAddress, session.ServerAddress })
+        {
+            code.MovRax(flag); code.Emit(0x80, 0x38, 0x00);
+            denied.Add(code.EmitNearConditionalJump(0x85));
+        }
+        code.MovRax(session.ActorSlot); code.Emit(0x48, 0x83, 0x38, 0);
+        denied.Add(code.EmitNearConditionalJump(0x84));
+        code.MovRax(session.TrackerSlot); code.Emit(0x48, 0x8B, 0x00, 0x48, 0x85, 0xC0);
+        denied.Add(code.EmitNearConditionalJump(0x84));
+        code.Emit(0x48, 0x8B, 0x80); code.Emit(BitConverter.GetBytes(session.CharacterOffset));
+        code.Emit(0x49, 0xBB); code.Emit(BitConverter.GetBytes(characterAddress));
+        code.Emit(0x49, 0x3B, 0x03); // cmp rax, [r11]
+        denied.Add(code.EmitNearConditionalJump(0x85));
+        EmitSessionGateRestore(code);
+        return denied;
+    }
+
+    private static void EmitSessionGateRestore(Emitter code) => code.Emit(0x41, 0x5B, 0x58, 0x9D);
+
+    private static void EmitSessionBypass(Emitter code, List<int> denied)
+    {
+        var success = code.EmitNearJump();
+        foreach (var jump in denied) code.PatchNearJump(jump, code.Position);
+        EmitSessionGateRestore(code);
+        code.PatchNearJump(success, code.Position);
     }
 
     public LastEpochCooldownDiagnostics ReadCooldownDiagnostics()
@@ -280,30 +403,6 @@ internal sealed class LastEpochRuntime : IDisposable
             installed ? ReadInt32(stub + GoldQuantityHookDataOffset + 4) : 0,
             installed ? ReadInt32(stub + GoldQuantityHookDataOffset + 8) : 0,
             installed ? ReadInt64(stub + GoldQuantityHookDataOffset + 16) : 0);
-    }
-
-    public static bool IsOfflineProcess(int processId)
-    {
-        try
-        {
-            using var process = Process.GetProcessById(processId);
-            using var handle = new SafeFileHandle(OpenProcess(0x0010 | 0x0400, false, processId), true);
-            if (handle.IsInvalid) return false;
-            var size = Marshal.SizeOf<ProcessBasicInformation>();
-            if (NtQueryInformationProcess(handle, 0, out ProcessBasicInformation info, size, out _) != 0)
-                return false;
-            var processParameters = ReadUInt64(handle, unchecked((ulong)info.PebBaseAddress.ToInt64()) + 0x20);
-            if (processParameters == 0) return false;
-            var length = ReadUInt16(handle, processParameters + 0x70);
-            var buffer = ReadUInt64(handle, processParameters + 0x78);
-            if (length == 0 || buffer == 0 || length > 32766) return false;
-            var bytes = ReadBytes(handle, buffer, length);
-            return Encoding.Unicode.GetString(bytes).Contains("--offline", StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     public AdapterCharacterItem ReadCharacter()
@@ -1040,7 +1139,7 @@ internal sealed class LastEpochRuntime : IDisposable
 
     private int ReadItemDropRatePercent()
     {
-        if (!TryGetItemDropHook(out var stub)) return 0;
+        if (!TryGetItemDropHook(out var stub) || !HookMatchesSession(stub)) return 0;
         return checked((int)Math.Round(
             (ReadSingle(stub + ItemDropHookDataOffset) - 1f) * 100d,
             MidpointRounding.AwayFromZero));
@@ -1054,6 +1153,7 @@ internal sealed class LastEpochRuntime : IDisposable
             var data = new byte[24];
             BitConverter.GetBytes(multiplier).CopyTo(data, 0);
             Write(existingStub + ItemDropHookDataOffset, data);
+            Write(existingStub + HookCharacterDataOffset, BitConverter.GetBytes(CurrentSession.CharacterData));
             return;
         }
         if (target == 0) return;
@@ -1063,12 +1163,12 @@ internal sealed class LastEpochRuntime : IDisposable
         if (!current.SequenceEqual(ItemDropChanceOriginalBytes))
             throw new InvalidOperationException("物品掉落概率结算点已被其他补丁修改，已拒绝叠加掉落率钩子。");
 
-        var allocation = Allocate(0x100);
+        var allocation = Allocate(HookAllocationSize);
         var stub = unchecked((ulong)allocation.ToInt64());
         var installed = false;
         try
         {
-            Write(stub, BuildItemDropHookPayload(stub, site, multiplier));
+            Write(stub, BuildItemDropHookPayload(stub, site, multiplier, CurrentSession));
             var jump = new byte[ItemDropChanceOriginalBytes.Length];
             jump[0] = 0xFF;
             jump[1] = 0x25;
@@ -1086,14 +1186,17 @@ internal sealed class LastEpochRuntime : IDisposable
     private static byte[] BuildItemDropHookPayload(
         ulong stub,
         ulong site,
-        float multiplier)
+        float multiplier,
+        SessionGuard session)
     {
         var code = new Emitter();
+        var denied = EmitSessionGate(code, session, stub + HookCharacterDataOffset);
         code.MovRax(stub + ItemDropHookDataOffset);
         code.Emit(0xF3, 0x0F, 0x11, 0x40, 0x04);
         code.Emit(0xF3, 0x0F, 0x59, 0x00);
         code.Emit(0xF3, 0x0F, 0x11, 0x40, 0x08);
         code.Emit(0x48, 0xFF, 0x40, 0x10);
+        EmitSessionBypass(code, denied);
         code.Emit(ItemDropChanceOriginalBytes);
         code.MovRax(site + unchecked((ulong)ItemDropChanceOriginalBytes.Length));
         code.Emit(0xFF, 0xE0);
@@ -1101,11 +1204,12 @@ internal sealed class LastEpochRuntime : IDisposable
         var generated = code.ToArray();
         if (generated.Length > ItemDropHookDataOffset)
             throw new InvalidOperationException("物品掉落率钩子超出安全代码缓冲区。");
-        var payload = new byte[0x100];
+        var payload = new byte[HookAllocationSize];
         generated.CopyTo(payload, 0);
         BitConverter.GetBytes(multiplier).CopyTo(payload, ItemDropHookDataOffset);
         ItemDropHookMagic.CopyTo(payload, ItemDropHookMetadataOffset);
         BitConverter.GetBytes(site).CopyTo(payload, ItemDropHookMetadataOffset + 8);
+        BitConverter.GetBytes(session.CharacterData).CopyTo(payload, HookCharacterDataOffset);
         return payload;
     }
 
@@ -1166,7 +1270,7 @@ internal sealed class LastEpochRuntime : IDisposable
 
     private int ReadGoldQuantityPercent()
     {
-        if (!TryGetGoldQuantityHook(out var stub)) return 0;
+        if (!TryGetGoldQuantityHook(out var stub) || !HookMatchesSession(stub)) return 0;
         return checked((int)Math.Round(
             (ReadSingle(stub + GoldQuantityHookDataOffset) - 1f) * 100d,
             MidpointRounding.AwayFromZero));
@@ -1180,6 +1284,7 @@ internal sealed class LastEpochRuntime : IDisposable
             var data = new byte[24];
             BitConverter.GetBytes(multiplier).CopyTo(data, 0);
             Write(existingStub + GoldQuantityHookDataOffset, data);
+            Write(existingStub + HookCharacterDataOffset, BitConverter.GetBytes(CurrentSession.CharacterData));
             return;
         }
         if (target == 0) return;
@@ -1193,12 +1298,12 @@ internal sealed class LastEpochRuntime : IDisposable
         if (!current.SequenceEqual(GoldQuantityOriginalBytes))
             throw new InvalidOperationException("金币落地入口已被其他补丁修改，已拒绝叠加金币数量倍率钩子。");
 
-        var allocation = Allocate(0x100);
+        var allocation = Allocate(HookAllocationSize);
         var stub = unchecked((ulong)allocation.ToInt64());
         var installed = false;
         try
         {
-            Write(stub, BuildGoldQuantityHookPayload(stub, entry, multiplier));
+            Write(stub, BuildGoldQuantityHookPayload(stub, entry, multiplier, CurrentSession));
             var jump = Enumerable.Repeat((byte)0x90, GoldQuantityOriginalBytes.Length).ToArray();
             jump[0] = 0xFF;
             jump[1] = 0x25;
@@ -1217,9 +1322,11 @@ internal sealed class LastEpochRuntime : IDisposable
     private static byte[] BuildGoldQuantityHookPayload(
         ulong stub,
         ulong entry,
-        float multiplier)
+        float multiplier,
+        SessionGuard session)
     {
         var code = new Emitter();
+        var denied = EmitSessionGate(code, session, stub + HookCharacterDataOffset);
         code.MovRax(stub + GoldQuantityHookDataOffset);
         code.Emit(0x44, 0x89, 0x40, 0x04);
         code.Emit(0x66, 0x41, 0x0F, 0x6E, 0xC0);
@@ -1228,6 +1335,7 @@ internal sealed class LastEpochRuntime : IDisposable
         code.Emit(0xF3, 0x44, 0x0F, 0x2C, 0xC0);
         code.Emit(0x44, 0x89, 0x40, 0x08);
         code.Emit(0x48, 0xFF, 0x40, 0x10);
+        EmitSessionBypass(code, denied);
         code.Emit(GoldQuantityOriginalBytes);
         code.MovRax(entry + unchecked((ulong)GoldQuantityOriginalBytes.Length));
         code.Emit(0xFF, 0xE0);
@@ -1235,11 +1343,12 @@ internal sealed class LastEpochRuntime : IDisposable
         var generated = code.ToArray();
         if (generated.Length > GoldQuantityHookDataOffset)
             throw new InvalidOperationException("金币数量倍率钩子超出安全代码缓冲区。");
-        var payload = new byte[0x100];
+        var payload = new byte[HookAllocationSize];
         generated.CopyTo(payload, 0);
         BitConverter.GetBytes(multiplier).CopyTo(payload, GoldQuantityHookDataOffset);
         GoldQuantityHookMagic.CopyTo(payload, GoldQuantityHookMetadataOffset);
         BitConverter.GetBytes(entry).CopyTo(payload, GoldQuantityHookMetadataOffset + 8);
+        BitConverter.GetBytes(session.CharacterData).CopyTo(payload, HookCharacterDataOffset);
         return payload;
     }
 
@@ -1290,21 +1399,20 @@ internal sealed class LastEpochRuntime : IDisposable
         var statsOffset = checked((int)ResolveFieldOffset(ResolveClass(string.Empty, "ExperienceTracker"), "stats", "ExperienceTracker"));
         if (TryGetExperienceGainHook(out var existingStub))
         {
-            WriteExecutable(
-                existingStub,
-                BuildExperienceGainHookPayload(existingStub, entry, getTotalInfo, getTotalPointer, statsOffset));
+            // Do not rewrite code while a game thread may be executing it.
+            Write(existingStub + HookCharacterDataOffset, BitConverter.GetBytes(CurrentSession.CharacterData));
             return;
         }
         var current = Read(entry, ExperienceGainOriginalBytes.Length);
         if (!current.SequenceEqual(ExperienceGainOriginalBytes))
             throw new InvalidOperationException("经验结算入口已被其他补丁修改，已拒绝叠加经验倍率钩子。");
 
-        var allocation = Allocate(0x100);
+        var allocation = Allocate(HookAllocationSize);
         var stub = unchecked((ulong)allocation.ToInt64());
         var installed = false;
         try
         {
-            Write(stub, BuildExperienceGainHookPayload(stub, entry, getTotalInfo, getTotalPointer, statsOffset));
+            Write(stub, BuildExperienceGainHookPayload(stub, entry, getTotalInfo, getTotalPointer, statsOffset, CurrentSession));
 
             var jump = new byte[ExperienceGainOriginalBytes.Length];
             jump[0] = 0xFF;
@@ -1325,9 +1433,11 @@ internal sealed class LastEpochRuntime : IDisposable
         ulong entry,
         ulong getTotalInfo,
         ulong getTotalPointer,
-        int statsOffset)
+        int statsOffset,
+        SessionGuard session)
     {
         var code = new Emitter();
+        var denied = EmitSessionGate(code, session, stub + HookCharacterDataOffset);
         code.Emit(0x48, 0x83, 0xEC, 0x68);
         code.Emit(0x48, 0x89, 0x4C, 0x24, 0x40);
         code.Emit(0x48, 0x89, 0x54, 0x24, 0x48);
@@ -1365,6 +1475,7 @@ internal sealed class LastEpochRuntime : IDisposable
         code.Emit(0x4C, 0x8B, 0x44, 0x24, 0x50);
         code.Emit(0x4C, 0x8B, 0x4C, 0x24, 0x58);
         code.Emit(0x48, 0x83, 0xC4, 0x68);
+        EmitSessionBypass(code, denied);
         code.Emit(ExperienceGainOriginalBytes);
         code.MovRax(entry + unchecked((ulong)ExperienceGainOriginalBytes.Length));
         code.Emit(0xFF, 0xE0);
@@ -1372,10 +1483,11 @@ internal sealed class LastEpochRuntime : IDisposable
         var generated = code.ToArray();
         if (generated.Length > ExperienceHookDataOffset)
             throw new InvalidOperationException("经验倍率钩子超出安全代码缓冲区。");
-        var payload = new byte[0x100];
+        var payload = new byte[HookAllocationSize];
         generated.CopyTo(payload, 0);
         ExperienceHookMagic.CopyTo(payload, ExperienceHookMetadataOffset);
         BitConverter.GetBytes(entry).CopyTo(payload, ExperienceHookMetadataOffset + 8);
+        BitConverter.GetBytes(session.CharacterData).CopyTo(payload, HookCharacterDataOffset);
         return payload;
     }
 
@@ -1669,7 +1781,7 @@ internal sealed class LastEpochRuntime : IDisposable
             "CharacterStats",
             "OnUpdateTick",
             1);
-        var statusAddress = Allocate(4);
+        var statusAddress = Allocate(16);
         var codeAddress = Allocate(1024);
         var status = unchecked((ulong)statusAddress.ToInt64());
         var trampoline = unchecked((ulong)codeAddress.ToInt64());
@@ -1678,6 +1790,7 @@ internal sealed class LastEpochRuntime : IDisposable
         try
         {
             Write(status, new byte[4]);
+            Write(status + 8, BitConverter.GetBytes(CurrentSession.CharacterData));
             var code = new Emitter();
             code.Emit(0x48, 0x81, 0xEC); code.Emit(BitConverter.GetBytes(stackSize));
             code.Emit(0x48, 0x89, 0x8C, 0x24, 0x60, 0x00, 0x00, 0x00);
@@ -1695,6 +1808,8 @@ internal sealed class LastEpochRuntime : IDisposable
             code.MovRdx(originalPointer);
             code.Emit(0x48, 0x89, 0x10);
 
+            var sessionDenied = EmitSessionGate(code, CurrentSession, status + 8);
+
             if (!operationAfterOriginal) emitOperation(code, stackSize);
             EmitOriginalCharacterStatsTick(code, originalPointer);
             if (operationAfterOriginal) emitOperation(code, stackSize);
@@ -1702,12 +1817,20 @@ internal sealed class LastEpochRuntime : IDisposable
             code.Emit(0xC7, 0x00, 0x01, 0x00, 0x00, 0x00);
             var completedJump = code.EmitNearJump();
 
+            foreach (var jump in sessionDenied) code.PatchNearJump(jump, code.Position);
+            EmitSessionGateRestore(code);
+            EmitOriginalCharacterStatsTick(code, originalPointer);
+            code.MovRax(status);
+            code.Emit(0xC7, 0x00, 0x02, 0x00, 0x00, 0x00);
+            var cancelledJump = code.EmitNearJump();
+
             var otherInstanceLabel = code.Position;
             code.PatchNearJump(otherInstanceJump, otherInstanceLabel);
             EmitOriginalCharacterStatsTick(code, originalPointer);
 
             var completedLabel = code.Position;
             code.PatchNearJump(completedJump, completedLabel);
+            code.PatchNearJump(cancelledJump, completedLabel);
             code.Emit(0x48, 0x81, 0xC4); code.Emit(BitConverter.GetBytes(stackSize));
             code.Emit(0xC3);
 
@@ -1727,6 +1850,8 @@ internal sealed class LastEpochRuntime : IDisposable
                     completed = true;
                     break;
                 }
+                if (ReadInt32(status) == 2)
+                    throw new InvalidOperationException("角色已退出或变化，未执行本次人物属性修改，请刷新后重试。");
                 Thread.Sleep(10);
             }
             if (!completed)
@@ -1736,7 +1861,7 @@ internal sealed class LastEpochRuntime : IDisposable
         finally
         {
             if (hookInstalled && ReadUInt64(slotAddress) == trampoline)
-                Write(slotAddress, BitConverter.GetBytes(originalPointer));
+                WriteRaw(slotAddress, BitConverter.GetBytes(originalPointer));
             if (completed)
             {
                 VirtualFreeEx(_handle, statusAddress, 0, MemRelease);
@@ -2515,6 +2640,14 @@ internal sealed class LastEpochRuntime : IDisposable
     private byte[] Read(ulong address, int count) => ReadBytes(_handle, address, count);
     private void Write(ulong address, byte[] bytes)
     {
+        EnsureSessionCurrent();
+        WriteRaw(address, bytes);
+    }
+
+    // Cleanup is restricted to the owned vtable pointer after matching our trampoline.
+    // It must still restore the original pointer if the user has left the character.
+    private void WriteRaw(ulong address, byte[] bytes)
+    {
         if (!WriteProcessMemory(_handle, (IntPtr)(long)address, bytes, (nuint)bytes.Length, out var written) ||
             written != (nuint)bytes.Length)
             throw new Win32Exception(Marshal.GetLastWin32Error(), $"写入 Last Epoch 内存失败：0x{address:X}。");
@@ -2555,26 +2688,10 @@ internal sealed class LastEpochRuntime : IDisposable
         return bytes;
     }
 
-    private static ushort ReadUInt16(SafeFileHandle handle, ulong address) =>
-        BitConverter.ToUInt16(ReadBytes(handle, address, 2));
-    private static ulong ReadUInt64(SafeFileHandle handle, ulong address) =>
-        BitConverter.ToUInt64(ReadBytes(handle, address, 8));
-
     public void Dispose()
     {
         _handle.Dispose();
         _process.Dispose();
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct ProcessBasicInformation
-    {
-        public IntPtr Reserved1;
-        public IntPtr PebBaseAddress;
-        public IntPtr Reserved2_0;
-        public IntPtr Reserved2_1;
-        public IntPtr UniqueProcessId;
-        public IntPtr Reserved3;
     }
 
     private sealed class Emitter
@@ -2653,9 +2770,6 @@ internal sealed class LastEpochRuntime : IDisposable
     private static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
     [DllImport("kernel32.dll")]
     private static extern bool CloseHandle(IntPtr handle);
-    [DllImport("ntdll.dll")]
-    private static extern int NtQueryInformationProcess(SafeFileHandle process, int processInformationClass,
-        out ProcessBasicInformation processInformation, int processInformationLength, out int returnLength);
 }
 
 internal static class PortableExportResolver

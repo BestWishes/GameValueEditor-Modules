@@ -19,6 +19,8 @@ public sealed class LastEpochLiveTest : IModuleLiveTest
         LiveTestSupport.Assert(adapter.Supports(process, new("", "", "", "")),
             "Module still depends on a historical fingerprint whitelist.");
         var diagnostics = adapter.GetCompatibilityDiagnostics(process, build);
+        LiveTestSupport.Assert(diagnostics.Any(item => item.DisplayName == "当前游玩状态" &&
+            item.Status == GameCompatibilityDiagnosticStatus.Passed), "Current offline character state was not accepted.");
         LiveTestSupport.Assert(diagnostics.Any(item => item.DisplayName == "IL2CPP 语义结构" &&
             item.Status == GameCompatibilityDiagnosticStatus.Passed), "Current root resolution failed.");
         var loaded = adapter.SupportsCharacterAttributes(process);
@@ -41,7 +43,48 @@ public sealed class LastEpochLiveTest : IModuleLiveTest
                 features[editor.Id] = new { Rows = rows.Count, Fields = rows.Sum(row => row.Fields.Count) };
             }
         }
-        Console.WriteLine(JsonSerializer.Serialize(new { ReadOnly = true, FingerprintWhitelistRequired = false,
+        if (args.Contains("--reversible-world"))
+        {
+            const string editor = "game.last-epoch.world";
+            var world = adapter.ReadEditorEntities(process, editor).Single();
+            var field = world.Fields.Single();
+            var original = field.Value;
+            try
+            {
+                var changed = adapter.WriteEditorField(process, editor, world.EntityId, field.Key,
+                    original < 120 ? original + 1 : original - 1);
+                LiveTestSupport.Assert(changed.Fields.Single().Value != original, "World reversible write did not change the camera.");
+            }
+            finally
+            {
+                adapter.WriteEditorField(process, editor, world.EntityId, field.Key, original);
+            }
+            LiveTestSupport.Assert(adapter.ReadEditorEntities(process, editor).Single().Fields.Single().Value == original,
+                "Camera was not restored.");
+            features["reversibleWorld"] = new { Original = original, Restored = true, SaveWritten = false };
+        }
+        if (args.Contains("--reversible-character"))
+        {
+            const string key = "core-strength";
+            var character = adapter.ReadCharacters(process).Single();
+            var original = character.Attributes.Single(field => field.Key == key).RawValue;
+            try
+            {
+                var target = original < 100_000 ? original + 1 : original - 1;
+                var changed = adapter.WriteCharacterAttribute(process, character.CharacterId, key, target);
+                LiveTestSupport.Assert(changed.Attributes.Single(field => field.Key == key).RawValue == target,
+                    "Main-thread reversible write did not reach the requested strength.");
+            }
+            finally
+            {
+                adapter.WriteCharacterAttribute(process, character.CharacterId, key, original);
+            }
+            LiveTestSupport.Assert(adapter.ReadCharacters(process).Single().Attributes.Single(field => field.Key == key).RawValue == original,
+                "Strength was not restored.");
+            features["reversibleCharacter"] = new { Original = original, Restored = true,
+                SaveWritten = false, GameplayEffectVerified = false };
+        }
+        Console.WriteLine(JsonSerializer.Serialize(new { ReadOnly = !args.Contains("--reversible-world") && !args.Contains("--reversible-character"), FingerprintWhitelistRequired = false,
             LoadedCharacter = loaded, build.GameAssemblySha256, build.MetadataSha256, Features = features }));
     }
 }

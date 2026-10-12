@@ -108,14 +108,13 @@ public sealed class LastEpochGameAdapter :
 
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint)
     {
-        if (!process.ProcessName.Equals("Last Epoch", StringComparison.OrdinalIgnoreCase) ||
-            !LastEpochRuntime.IsOfflineProcess(process.ProcessId))
+        if (!process.ProcessName.Equals("Last Epoch", StringComparison.OrdinalIgnoreCase))
             return false;
         try
         {
-            using var runtime = Open(process);
+            using var runtime = Open(process, requireOfflineCharacter: false);
             runtime.ValidateCompatibility();
-            return true;
+            return runtime.ReadPlayState() != LastEpochPlayState.OnlinePlay;
         }
         catch
         {
@@ -128,20 +127,52 @@ public sealed class LastEpochGameAdapter :
         GameProcessContext process,
         GameBuildIdentity fingerprint)
     {
-        var offline = LastEpochRuntime.IsOfflineProcess(process.ProcessId);
-        var supported = offline && Supports(process, fingerprint);
-        return
-        [
-            new("离线进程", offline ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
-                offline ? "当前进程处于离线单机模式。" : "当前进程不是模块允许的离线模式。"),
-            new("IL2CPP 语义结构",
-                supported ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
-                supported ? "已从当前游戏定位人物数据入口；各功能按当前元数据重新定位。" : "游戏数据入口尚未加载或发生变化。"),
+        var items = new List<GameCompatibilityDiagnostic>();
+        try
+        {
+            using var runtime = Open(process, requireOfflineCharacter: false);
+            try
+            {
+                runtime.ValidateCompatibility();
+                items.Add(new("IL2CPP 语义结构", GameCompatibilityDiagnosticStatus.Passed,
+                    "已解析当前游戏人物根和游玩状态结构；各功能按当前元数据定位。"));
+            }
+            catch (Exception error)
+            {
+                items.Add(new("IL2CPP 语义结构", GameCompatibilityDiagnosticStatus.Failed, error.Message));
+            }
+            try
+            {
+                var state = runtime.ReadPlayState();
+                items.Add(new("当前游玩状态", state == LastEpochPlayState.OfflineCharacter
+                    ? GameCompatibilityDiagnosticStatus.Passed : state == LastEpochPlayState.OnlinePlay
+                        ? GameCompatibilityDiagnosticStatus.Failed : GameCompatibilityDiagnosticStatus.Information,
+                    state switch
+                    {
+                        LastEpochPlayState.OfflineCharacter => "当前为离线角色；普通离线和完全离线均支持，不要求启动参数。",
+                        LastEpochPlayState.OnlinePlay => "当前正在联机游玩，模块不修改联机角色。",
+                        _ => "尚未进入角色或场景正在加载；进入离线角色后刷新。"
+                    }));
+            }
+            catch (Exception error)
+            {
+                items.Add(new("当前游玩状态", GameCompatibilityDiagnosticStatus.Information,
+                    "暂时无法读取当前游玩状态，不代表正在联机：" + error.Message));
+            }
+        }
+        catch (Exception error)
+        {
+            items.Add(new("当前游玩状态", GameCompatibilityDiagnosticStatus.Information, error.Message));
+            items.Add(new("IL2CPP 语义结构", GameCompatibilityDiagnosticStatus.Information,
+                "未打开当前游戏运行时，尚未执行结构检查。"));
+        }
+        items.AddRange([
             new("更新后自动定位", GameCompatibilityDiagnosticStatus.Passed,
                 "不再要求文件指纹命中旧构建清单；资源、异界、摄像头与人物字段按名称定位。"),
             new("模块自有页面", GameCompatibilityDiagnosticStatus.Passed,
                 $"模块将创建 {Editors.Count} 个独立 WPF 页面。")
-        ];
+        ]);
+        return items;
     }
 
     public bool SupportsCharacterAttributes(GameProcessContext process)
@@ -296,18 +327,26 @@ public sealed class LastEpochGameAdapter :
 
     public GameDeclaredVersionInfo ReadGameVersionMetadata(GameProcessContext process)
     {
-        using var runtime = Open(process);
+        using var runtime = Open(process, requireOfflineCharacter: false);
         var metadata = runtime.ReadApplicationMetadata();
         return new(metadata.Version, metadata.ProductName, metadata.BuildGuid);
     }
 
-    private static LastEpochRuntime Open(GameProcessContext process)
+    private static LastEpochRuntime Open(GameProcessContext process, bool requireOfflineCharacter = true)
     {
         if (!process.ProcessName.Equals("Last Epoch", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Last Epoch 进程名称不匹配，请重新连接游戏。");
-        if (!LastEpochRuntime.IsOfflineProcess(process.ProcessId))
-            throw new InvalidOperationException("Last Epoch 专属模块只支持通过“完全离线模式”启动的游戏进程。");
         LastEpochBuildGuard.EnsureCurrentProcess(process.ProcessId, process.StartTimeUtc);
-        return new LastEpochRuntime(process.ProcessId);
+        var runtime = new LastEpochRuntime(process.ProcessId);
+        try
+        {
+            if (requireOfflineCharacter) runtime.BindOfflineSession();
+            return runtime;
+        }
+        catch
+        {
+            runtime.Dispose();
+            throw;
+        }
     }
 }

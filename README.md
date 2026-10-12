@@ -29,7 +29,7 @@ catalog.json
 
 - 放置斩魔录：[`game.fzzml` v2.1.5](games/fzzml/docs/README.md)
 - 不问凡尘：[`game.worldapart` v1.3.5](games/worldapart/docs/README.md)
-- [`game.last-epoch` v0.5.6](games/last-epoch/docs/README.md)，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
+- [`game.last-epoch` v0.5.7](games/last-epoch/docs/README.md)，普通离线与完全离线入口共用，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
 - [`game.play-again-expedition` v0.1.2](games/play-again-expedition/docs/LOCAL_USE.md)，包含“材料”“大转盘”“掉落”“命格”“装备”，加载要求主程序至少 0.5.2；建议配套 0.5.3 获取本次查新/回退修复。直接接入正常启动的原游戏，无须启动参数或连接准备。大转盘单抽/十连共用概率规则，新生成装备、宝石（含基础属性）、时装、徽章的数值可取原生范围满值。
 
 2026-10-09 远征修复不再依赖旧构建哈希、固定运行时版本或概率列号，已用当前 0.116.73 的实际消费者核验，见[小更新修复记录](games/play-again-expedition/docs/SMALL_UPDATE_LOCAL.md)。此前审查把放置斩魔录误写成不问凡尘，现已纠正：放置斩魔录是 `game.fzzml`，不问凡尘是 `game.worldapart`。
@@ -38,7 +38,9 @@ catalog.json
 
 具体功能、线程、保存链路和实机证据只维护在对应游戏目录，不复制到主程序架构文档。
 
-此前修复已包含在 Last Epoch 0.5.6、远征 0.0.6 及主程序 0.5.2 中：Last Epoch 取消历史哈希整包门槛，资源/异界/摄像头及统计按当前 IL2CPP 字段重新定位，个别可选属性失败不连带停用整个模块；远征请求/接口清理串行等待；宿主先按游戏名称识别并保留连接会话页面，小更新的构建记录与旧地址隔离不影响游戏归属。本次不重发上述资产，也不把此前未完成的 Last Epoch 更新构建实机读取说成已经通过。
+此前修复已包含在 Last Epoch 0.5.6、远征 0.0.6 及主程序 0.5.2 中：Last Epoch 取消历史哈希整包门槛，资源/异界/摄像头及统计按当前 IL2CPP 字段重新定位，个别可选属性失败不连带停用整个模块；远征请求/接口清理串行等待；宿主先按游戏名称识别并保留连接会话页面，小更新的构建记录与旧地址隔离不影响游戏归属。2026-10-09 两款游戏修复时未重发上述资产，当时 Last Epoch 更新构建实机读取也尚未完成。
+
+2026-10-12 Last Epoch 0.5.7 移除完全离线启动参数门槛，普通离线与完全离线角色均已在 Steam Build 25816319 实际读取五页；碎片数量可逆修改、游戏原生保存和重启恢复核验通过。人物写入与经验/物品/金币原生钩子绑定当前离线角色，离开或切换角色后旧规则不作用于新角色；未执行的结构检查不再误报失败。详见[两种离线入口方案与验收](games/last-epoch/docs/OFFLINE_SESSION_0_5_7.md)。本次仅发布 Last Epoch，主程序 0.5.3 与其它游戏模块不重发。
 
 再刷一把：远征的三页设计与验收见[历史本地复核](games/play-again-expedition/docs/THREE_EDITORS_COMPLETION_LOCAL.md)，早期两页记录见[历史设计](games/play-again-expedition/docs/IMPLEMENTATION_LOCAL.md)。五页功能原先发布为 [0.0.7](games/play-again-expedition/docs/RELEASE_0_0_7.md)，但正式编号低于已交付本地 0.1.1，导致本地用户不能正常更新。现改为正式 0.1.2，所有已交付编号进入统一计数历史；不覆盖历史资产，不重发其它三个模块，游戏规则请求不变。见[交付与发布设计](docs/DELIVERY_AND_RELEASE_RELIABILITY.md)和[0.1.2 记录](games/play-again-expedition/docs/RELEASE_0_1_2.md)。运行包只有 DLL 与清单，无外部脚本依赖；构建嵌入请求需要 Node.js。
 
