@@ -351,16 +351,21 @@
     },
     {
       "id": "game.last-epoch",
-      "version": "0.5.6",
+      "version": "0.5.7",
       "displayName": "Last Epoch 离线专属修改模块",
       "gameDisplayName": "最后纪元",
-      "description": "仅支持离线模式：人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、资源、异界进度与摄像头视野。更新后按当前游戏元数据重新定位字段，不以旧构建指纹拒绝整个模块。",
+      "description": "支持普通离线和完全离线角色，不要求启动参数。人物点数、五维、范围与实用倍率、熔炉主槽装备潜能、资源、异界进度与摄像头视野；按当前游戏元数据定位，不以旧构建指纹拒绝整个模块。",
       "hostApiVersion": 8,
       "minimumHostVersion": "0.5.1",
       "processNames": [
         "Last Epoch"
       ],
       "compatibleBuilds": [
+        {
+          "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+          "gameAssemblySha256": "D5F9FB458F0E9878E697A92B590A586A52FD77E645F8BF87BB4F2B74C6C56567",
+          "metadataSha256": "81FF3419726BB5CF8E4F86EACE2B2DF2638EC4BC6FFED8A7A5DBAF09AA6F7BED"
+        },
         {
           "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
           "gameAssemblySha256": "1B720BDE6C6010BF02DE2F9724BC4C5E524C192B29E5AA160852B7993ED45449",
@@ -425,10 +430,79 @@
           "latestContributionDate": "2026-10-05"
         }
       ],
-      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.6/GameValueEditor.Module.LastEpoch-v0.5.6.zip",
-      "sizeBytes": 70576,
-      "sha256": "C3A4C5D802D8119A41E31A97651F3C2A04EA897C54341F85468FA2641043BA84",
+      "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.7/GameValueEditor.Module.LastEpoch-v0.5.7.zip",
+      "sizeBytes": 73707,
+      "sha256": "384C945C1CA986A95389B7FCC7F4D8F86AEED841CB50C7ECE80F9FB8549E3B64",
       "releases": [
+        {
+          "version": "0.5.7",
+          "hostApiVersion": 8,
+          "supportsUnlistedBuildValidation": true,
+          "minimumHostVersion": "0.5.1",
+          "maximumHostVersion": null,
+          "compatibleBuilds": [
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "D5F9FB458F0E9878E697A92B590A586A52FD77E645F8BF87BB4F2B74C6C56567",
+              "metadataSha256": "81FF3419726BB5CF8E4F86EACE2B2DF2638EC4BC6FFED8A7A5DBAF09AA6F7BED"
+            },
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "1B720BDE6C6010BF02DE2F9724BC4C5E524C192B29E5AA160852B7993ED45449",
+              "metadataSha256": "7FA4AC2A9B2A96BB084ED84EE4D6282FB73FF1AD00936AC1DDF8EA6FBA570B08"
+            },
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "502E32F1F31BC1979AC6C387FAEF1266A62AD29F5B573E6D9B51CB577A72F5F8",
+              "metadataSha256": "F50904BB4F148A4F4EA7239BE6029CD35669E37BE107178492381D67F2E1EE99"
+            },
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "FC83F941396282C0E489ED44FF4375130FB74F3C5D8CDF983696A9EFBDC9019A",
+              "metadataSha256": "A4F8B652DD3CCFCCE53E87B9ABCBA0ECDDF3798CF42C4C5F7C045DF3CACBF17D"
+            },
+            {
+              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
+              "gameAssemblySha256": "66379C9E1B106C7A517AEF1419090ED2565D1C6689C7A6F644A196CE34B2C03D",
+              "metadataSha256": "CE1D015E1162C5529A935A89521F4F3733EB3D37F4CA2DD9688C53C0FC5EAF00"
+            }
+          ],
+          "editors": [
+            {
+              "id": "game.last-epoch.character-attributes",
+              "displayName": "人物属性",
+              "order": 200,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.equipment",
+              "displayName": "装备编辑",
+              "order": 300,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.materials",
+              "displayName": "资源",
+              "order": 400,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.monolith",
+              "displayName": "异界进度",
+              "order": 500,
+              "sessionOnly": false
+            },
+            {
+              "id": "game.last-epoch.world",
+              "displayName": "世界功能",
+              "order": 600,
+              "sessionOnly": true
+            }
+          ],
+          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.7/GameValueEditor.Module.LastEpoch-v0.5.7.zip",
+          "sizeBytes": 73707,
+          "sha256": "384C945C1CA986A95389B7FCC7F4D8F86AEED841CB50C7ECE80F9FB8549E3B64"
+        },
         {
           "version": "0.5.6",
           "hostApiVersion": 8,
@@ -556,70 +630,6 @@
           "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.5/GameValueEditor.Module.LastEpoch-v0.5.5.zip",
           "sizeBytes": 73761,
           "sha256": "2A5DC65C72BD58D8EEDF3CFE77984B5CEB83A5A15E7C83DDB1A10CB2BC4CD7DE"
-        },
-        {
-          "version": "0.5.4",
-          "hostApiVersion": 7,
-          "supportsUnlistedBuildValidation": true,
-          "minimumHostVersion": "0.4.4",
-          "maximumHostVersion": null,
-          "compatibleBuilds": [
-            {
-              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
-              "gameAssemblySha256": "1B720BDE6C6010BF02DE2F9724BC4C5E524C192B29E5AA160852B7993ED45449",
-              "metadataSha256": "7FA4AC2A9B2A96BB084ED84EE4D6282FB73FF1AD00936AC1DDF8EA6FBA570B08"
-            },
-            {
-              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
-              "gameAssemblySha256": "502E32F1F31BC1979AC6C387FAEF1266A62AD29F5B573E6D9B51CB577A72F5F8",
-              "metadataSha256": "F50904BB4F148A4F4EA7239BE6029CD35669E37BE107178492381D67F2E1EE99"
-            },
-            {
-              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
-              "gameAssemblySha256": "FC83F941396282C0E489ED44FF4375130FB74F3C5D8CDF983696A9EFBDC9019A",
-              "metadataSha256": "A4F8B652DD3CCFCCE53E87B9ABCBA0ECDDF3798CF42C4C5F7C045DF3CACBF17D"
-            },
-            {
-              "executableSha256": "BD58F074BA47CF4BE285BA5D36427E0D2B94D00E59184D2981A5A1475979337E",
-              "gameAssemblySha256": "66379C9E1B106C7A517AEF1419090ED2565D1C6689C7A6F644A196CE34B2C03D",
-              "metadataSha256": "CE1D015E1162C5529A935A89521F4F3733EB3D37F4CA2DD9688C53C0FC5EAF00"
-            }
-          ],
-          "editors": [
-            {
-              "id": "game.last-epoch.character-attributes",
-              "displayName": "人物属性",
-              "order": 200,
-              "sessionOnly": false
-            },
-            {
-              "id": "game.last-epoch.equipment",
-              "displayName": "装备编辑",
-              "order": 300,
-              "sessionOnly": false
-            },
-            {
-              "id": "game.last-epoch.materials",
-              "displayName": "资源",
-              "order": 400,
-              "sessionOnly": false
-            },
-            {
-              "id": "game.last-epoch.monolith",
-              "displayName": "异界进度",
-              "order": 500,
-              "sessionOnly": false
-            },
-            {
-              "id": "game.last-epoch.world",
-              "displayName": "世界功能",
-              "order": 600,
-              "sessionOnly": true
-            }
-          ],
-          "downloadUrl": "https://github.com/BestWishes/GameValueEditor-Modules/releases/download/last-epoch-v0.5.4/GameValueEditor.Module.LastEpoch-v0.5.4.zip",
-          "sizeBytes": 73451,
-          "sha256": "1B4788E8805574481F7F96AB74C8017035D60370CAE1111A9934EE3DDC1ADF06"
         }
       ]
     },

@@ -40,7 +40,7 @@ catalog.json
 
 此前修复已包含在 Last Epoch 0.5.6、远征 0.0.6 及主程序 0.5.2 中：Last Epoch 取消历史哈希整包门槛，资源/异界/摄像头及统计按当前 IL2CPP 字段重新定位，个别可选属性失败不连带停用整个模块；远征请求/接口清理串行等待；宿主先按游戏名称识别并保留连接会话页面，小更新的构建记录与旧地址隔离不影响游戏归属。2026-10-09 两款游戏修复时未重发上述资产，当时 Last Epoch 更新构建实机读取也尚未完成。
 
-2026-10-12 Last Epoch 0.5.7 移除完全离线启动参数门槛，普通离线与完全离线角色均已在 Steam Build 25816319 实际读取五页；碎片数量可逆修改、游戏原生保存和重启恢复核验通过。人物写入与经验/物品/金币原生钩子绑定当前离线角色，离开或切换角色后旧规则不作用于新角色；未执行的结构检查不再误报失败。详见[两种离线入口方案与验收](games/last-epoch/docs/OFFLINE_SESSION_0_5_7.md)。本次仅发布 Last Epoch，主程序 0.5.3 与其它游戏模块不重发。
+2026-10-12 Last Epoch 0.5.7 移除完全离线启动参数门槛，普通离线与完全离线角色均已在 Steam Build 25816319 实际读取五页；碎片数量可逆修改、游戏原生保存和重启恢复核验通过。人物写入与经验/物品/金币原生钩子绑定当前离线角色，离开或切换角色后旧规则不作用于新角色；未执行的结构检查不再误报失败。详见[两种离线入口方案与验收](games/last-epoch/docs/OFFLINE_SESSION_0_5_7.md)和[正式资产/完整离线包记录](games/last-epoch/docs/RELEASE_0_5_7.md)。本次仅发布 Last Epoch，主程序 0.5.3 与其它游戏模块不重发。
 
 再刷一把：远征的三页设计与验收见[历史本地复核](games/play-again-expedition/docs/THREE_EDITORS_COMPLETION_LOCAL.md)，早期两页记录见[历史设计](games/play-again-expedition/docs/IMPLEMENTATION_LOCAL.md)。五页功能原先发布为 [0.0.7](games/play-again-expedition/docs/RELEASE_0_0_7.md)，但正式编号低于已交付本地 0.1.1，导致本地用户不能正常更新。现改为正式 0.1.2，所有已交付编号进入统一计数历史；不覆盖历史资产，不重发其它三个模块，游戏规则请求不变。见[交付与发布设计](docs/DELIVERY_AND_RELEASE_RELIABILITY.md)和[0.1.2 记录](games/play-again-expedition/docs/RELEASE_0_1_2.md)。运行包只有 DLL 与清单，无外部脚本依赖；构建嵌入请求需要 Node.js。
 
