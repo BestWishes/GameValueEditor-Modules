@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "deliveries": [
+    { "tagPrefix": "play-again-expedition-v", "version": "0.0.7", "evidence": "games/play-again-expedition/docs/WHEEL_TEN_DRAW_LOCAL.md" },
+    { "tagPrefix": "play-again-expedition-v", "version": "0.0.8", "evidence": "games/play-again-expedition/docs/FATE_EQUIPMENT_LOCAL.md", "sha256": "8BA15744BF9F91DFE20D58312D1D50B62869A0C90FE7BFD947DF91C848EB69C9" },
+    { "tagPrefix": "play-again-expedition-v", "version": "0.0.9", "evidence": "games/play-again-expedition/docs/EQUIPMENT_WHEEL_LOCAL.md", "sha256": "9EA3E0C434BB323BDFEAEA2E7F437114E3385EA5B2D82594264F6AA384E092F5" },
+    { "tagPrefix": "play-again-expedition-v", "version": "0.1.0", "evidence": "games/play-again-expedition/docs/GENERATED_ITEMS_LOCAL.md", "sha256": "B5326F60825FEFEEECBA5FA7012F9E3708FB694E0F07385560C868021EF0C5B7" },
+    { "tagPrefix": "play-again-expedition-v", "version": "0.1.1", "evidence": "games/play-again-expedition/docs/GEM_BASE_LOCAL.md", "sha256": "29CC55666DB666D79CEEA4AB9D1E747D5B883B9C46DC20DB863B9E9A44056346" }
+  ]
+}

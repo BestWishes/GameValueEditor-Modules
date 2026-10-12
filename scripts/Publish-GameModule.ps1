@@ -11,6 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 . (Join-Path $PSScriptRoot 'versioning.ps1')
+. (Join-Path $PSScriptRoot 'module-package.ps1')
 if ($CatalogOnly -and $SkipCatalog) { throw 'CatalogOnly and SkipCatalog cannot be used together.' }
 if (-not $CatalogOnly -and -not $SkipCatalog) {
     throw 'Build packages with -SkipCatalog. Update catalog.json only after remote verification by using -CatalogOnly.'
@@ -20,8 +21,9 @@ $repoBoundary = $repoRoot.TrimEnd(
     [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
 $gamesRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "games")) + [System.IO.Path]::DirectorySeparatorChar
 $gameRoot = [System.IO.Path]::GetFullPath((Join-Path $gamesRoot $Game))
-$buildDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "artifacts\$Game\build"))
-$packageDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "artifacts\$Game\package"))
+$workDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "artifacts\$Game\publish-$([guid]::NewGuid().ToString('N'))"))
+$buildDir = Join-Path $workDir 'build'
+$packageDir = Join-Path $workDir 'package'
 $distDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     [System.IO.Path]::GetFullPath((Join-Path $repoRoot "dist"))
 } else {
@@ -66,29 +68,12 @@ if ($contributorsDocument.moduleId -ne $manifest.id) {
 }
 
 if (-not $CatalogOnly) {
+    if (Test-Path -LiteralPath $archivePath) { throw 'An existing module archive is immutable; use CatalogOnly to read it or choose a new version/output directory.' }
     $workingTree = @(& git -C $repoRoot status --porcelain --untracked-files=all)
     if ($LASTEXITCODE -ne 0 -or $workingTree.Count -ne 0) {
         throw 'Formal module packages must be rebuilt from a clean committed working tree.'
     }
-    foreach ($path in @($buildDir, $packageDir)) {
-        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
-    }
     New-Item -ItemType Directory -Path $buildDir, $packageDir, $distDir -Force | Out-Null
-
-    $retainedArchiveNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($sourceGameDirectory in Get-ChildItem -LiteralPath (Join-Path $repoRoot "games") -Directory) {
-        $sourceManifestPath = Join-Path $sourceGameDirectory.FullName "module.json"
-        if (-not (Test-Path -LiteralPath $sourceManifestPath)) { continue }
-        $sourceManifest = Get-Content -LiteralPath $sourceManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        $sourceSlug = [System.IO.Path]::GetFileNameWithoutExtension([string]$sourceManifest.assemblyFile) `
-            -replace '^GameValueEditor\.Modules\.', ''
-        $null = $retainedArchiveNames.Add("GameValueEditor.Module.$sourceSlug-v$($sourceManifest.version).zip")
-    }
-    foreach ($oldArchive in Get-ChildItem -LiteralPath $distDir -File -Filter "GameValueEditor.Module.*.zip") {
-        if (-not $retainedArchiveNames.Contains($oldArchive.Name)) {
-            Remove-Item -LiteralPath $oldArchive.FullName -Force
-        }
-    }
 
     dotnet build $projectFile -c Release -p:ModuleVersion=$Version -o $buildDir
     if ($LASTEXITCODE -ne 0) { throw "$($manifest.id) build failed." }
@@ -103,8 +88,8 @@ if (-not $CatalogOnly) {
     $packagedManifest = $manifest | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $packagedManifest | Add-Member -NotePropertyName contributors -NotePropertyValue @($contributorsDocument.contributors) -Force
     $packagedManifest | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath (Join-Path $packageDir "module.json") -Encoding utf8NoBOM
-    if (Test-Path -LiteralPath $archivePath) { Remove-Item -LiteralPath $archivePath -Force }
-    Compress-Archive -Path (Join-Path $packageDir "*") -DestinationPath $archivePath -CompressionLevel Optimal
+    Invoke-ModuleArchivePackage -AssemblyPath (Join-Path $packageDir $assemblyFile) `
+        -ManifestPath (Join-Path $packageDir 'module.json') -OutputPath $archivePath
 }
 elseif (-not (Test-Path -LiteralPath $archivePath)) {
     throw "CatalogOnly requires the already verified release archive: $archivePath"

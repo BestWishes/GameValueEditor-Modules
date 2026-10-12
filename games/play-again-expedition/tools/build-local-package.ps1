@@ -14,6 +14,8 @@ $manifestPath = Join-Path $moduleRoot 'module.json'
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $moduleVersion = [string]$manifest.version
 if ($moduleVersion -notmatch '^(0|[1-9][0-9]*)\.[0-9]\.[0-9]$') { throw 'Invalid module version.' }
+. (Join-Path $repoRoot 'scripts/versioning.ps1')
+Assert-NextReleaseVersion -RepositoryRoot $repoRoot -Version $moduleVersion -TagPattern 'play-again-expedition-v*' -TagPrefix 'play-again-expedition-v'
 if (-not $ModuleOnly -and [version]$manifest.minimumHostVersion -gt [version]'0.5.1') {
     throw 'Use -ModuleOnly and the host build-complete-offline-bundle.ps1 entry point; the historical standalone template is host 0.5.1.'
 }
@@ -49,6 +51,7 @@ try {
 } finally { $archive.Dispose() }
 
 if ($ModuleOnly) {
+    Add-LocalDeliveryVersion -RepositoryRoot $repoRoot -TagPrefix 'play-again-expedition-v' -Version $moduleVersion -ArchivePath $archivePath
     # Feed the existing host offline-bundle entry point; do not create a second
     # application package or overwrite any installation or official asset.
     [ordered]@{ LocalOnly = $true; Published = $false; ModuleId = $manifest.id; ModuleVersion = $manifest.version;
@@ -59,7 +62,7 @@ if ($ModuleOnly) {
 }
 
 # A fresh LOCAL validation installation, not a new official complete-offline release.
-# Never touch existing installations, libraries, the game, catalog or Git state.
+# Never touch existing installations, libraries, the game or catalog.
 $hostRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot '../GameValueEditor'))
 $basePath = Join-Path $hostRoot 'dist/GameValueEditor-v0.5.1-complete-offline-win-x64.zip'
 $baseHash = (Get-FileHash -LiteralPath $basePath -Algorithm SHA256).Hash
