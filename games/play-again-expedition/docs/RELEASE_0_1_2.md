@@ -21,4 +21,13 @@
 - 嵌入 `Expedition.Requests.json` 的 SHA-256：`49556CCDD2D159EAE37EADD122DB4B8192D35B9C22794FFC62F72B4371139C2B`，与 0.0.7/本地 0.1.1 一致。
 - 主程序 0.5.3 完整冒烟实际加载四个原正式模块包，共 14 页通过，远征自身 5 页通过；不是只比较清单或加载自编译临时 DLL。
 
-线上复核、目录与完整离线包结果在发布完成后追加。
+## 线上与完整离线交付
+
+- [0.1.2 Release](https://github.com/BestWishes/GameValueEditor-Modules/releases/tag/play-again-expedition-v0.1.2) 已通过代理上传，独立 VerifyOnly 验证远端大小/SHA-256 与本地一致；注释标签指向上述干净源码提交。
+- 上传前 main 已有构建证据文档提交；上传后目录提交 `a6ce9b0` 再推进 main，重跑相同发布入口仍成功复用已上传资产。这次真实验证“标签属于 main 历史”的恢复约束，不再要求标签等于最新 main。
+- 公开 raw 目录与本地完整结构相同；远征保留 0.1.2/0.0.7/0.0.6 三版。其余三个游戏目录条目完全不变，也各保留三版，没有删除它们的 Release/资产。
+- `verify-release.ps1 -VerifyReleasedVersions` 全部通过：四模块及 LiveTests Release 编译、目录/Schema/工具回归、完整宿主冒烟、四个原正式 ZIP 共 14 页加载。不重打其它三个不可变版本。
+- 完整离线包位于宿主 `D:/MyOtherProjects/GameValueEditor/dist/GameValueEditor-v0.5.3-202610121.zip`，99,505,851 字节；SHA-256 `E5DF370B125DCEFC2EA942C3DF30452B4CC40E3DC80905AFBBA6FC0132CBAF25`。包含主程序 0.5.3 / API 8、远征 0.1.2、Fzzml 2.1.5、WorldApart 1.3.5、Last Epoch 0.5.6；实际页面、文件散列、EXE 启动及独立短名 VerifyOnly 全通过，LatestStatus=Current。
+- 本地冻结记录：宿主 `artifacts/offline-bundle-receipts/E5DF370B125DCEFC2EA942C3DF30452B4CC40E3DC80905AFBBA6FC0132CBAF25.json`。损坏 DLL / 错误页面登记两项负向集成通过。完整 ZIP 没有上传 GitHub，仅用于本地或 QQ 分发。
+
+这次没有修改原游戏或存档、启动参数和用户当前安装，也没有做新的逐项实机写入。其它游戏模块及远征游戏规则请求保持原样。
