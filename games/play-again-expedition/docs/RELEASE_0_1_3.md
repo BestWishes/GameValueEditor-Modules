@@ -34,4 +34,24 @@ dotnet run --project games/play-again-expedition/tests/ModuleTests/GameValueEdit
 ./scripts/validate-modules.ps1 -SkipCatalog
 ```
 
-没有连接原游戏、修改内存/存档、抽奖、战斗、保存或操作屏幕；本轮不宣称新增实机功能验证。正式包摘要、线上校验、目录更新及最新三个包结果在发布步骤完成后补记。
+没有连接原游戏、修改内存/存档、抽奖、战斗、保存或操作屏幕；本轮不宣称新增实机功能验证。
+
+## 正式产物与线上复验
+
+- 干净源码提交：`d2d9f77022f03caa1076c94873838cf0eb49fde9`；注释标签 `play-again-expedition-v0.1.3` 指向该提交。
+- [0.1.3 Release](https://github.com/BestWishes/GameValueEditor-Modules/releases/tag/play-again-expedition-v0.1.3)：正式 ZIP `GameValueEditor.Module.PlayAgainExpedition-v0.1.3.zip`，227,066 字节。
+- SHA-256：`B9D5E8184AC277A2E40249267E5DC38D749553C235A161A266B1A0D93AD1B9C0`。ZIP 仅含 DLL（966,144 字节）和 module.json（2,249 字节）；API 8、最低主程序 0.5.2、五页和贡献者信息核验通过。
+- 使用 `http://127.0.0.1:7897` 代理上传，独立 `-VerifyOnly` 确认线上大小与摘要一致；正式 ZIP 被当前主程序实际加载，远征五页通过。
+- 上传验证后才更新目录；目录提交 `3b374c4` 已推送。公开 raw 目录完整结构与本地一致，其余三个游戏条目没有变化。
+- `verify-release.ps1 -VerifyReleasedVersions` 通过：所有模块及 LiveTests 编译、发布工具/Schema/目录回归、宿主完整冒烟、四个原正式 ZIP 共 14 页。首次运行只因本地集成缓存缺少现有 Last Epoch 0.5.7 ZIP 停止；从 dist 原正式包校验大小/摘要并补齐缓存后通过，没有重打或重新上传该模块。
+- 目录和 GitHub Release 都只保留远征 0.1.3、0.1.2、0.0.7。按已有最新三个包策略删除 0.0.6 的旧 Release 和附件，保留其 Git 标签以及本地 `dist/GameValueEditor.Module.PlayAgainExpedition-v0.0.6.zip`，没有删除其它游戏资产。
+
+## 完整离线包（仅本地）
+
+`D:/MyOtherProjects/GameValueEditor/dist/GameValueEditor-v0.5.4-20261013.zip`，99,515,190 字节。
+
+- SHA-256：`CB71AB0AC167C9CF772AE49E3577056F14F69DBDEB1267CB7B818162DB48C053`。
+- 主程序 0.5.4（沿用原正式标准包，源码提交 `7c767f70df4b89bd12cdc0a8ea4d5b23cbfe0ff5`）；Fzzml 2.1.5、WorldApart 1.3.5、Last Epoch 0.5.7、远征 0.1.3。
+- 主程序标准包 SHA-256：`ECD1A61EACFE9F0EBAE92B722F348B4EF9B648AE9161657E7992AFDC942E34D6`。没有修改、提交或重发主程序。
+- 使用现有完整离线构建器；完整文件集/原始散列、真实模块 14 页和 EXE 启动通过。独立 VerifyOnly 返回 IntegrityVerified / ModulesVerified / StartupVerified=true、LatestStatus=Current；离线工具 112 项及错误 DLL/错误页面登记两项负向集成通过。
+- 冻结证据保存在主程序 `artifacts/offline-bundle-receipts/CB71AB0AC167C9CF772AE49E3577056F14F69DBDEB1267CB7B818162DB48C053.json`。完整包未上传 GitHub，不覆盖旧完整包或用户安装。
