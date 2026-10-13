@@ -6,6 +6,7 @@ const { assertReadonlyContext } = require('./read-context-contract.cjs');
 const { validateNativeDrops } = require('./drops-native-validation.cjs');
 const { discoverProbabilitySites } = require('./probability-sites.cjs');
 const { createWheelRngBridge } = require('./wheel-rng-bridge.cjs');
+const { withMutationOutcome } = require('./mutation-outcome.cjs');
 
 function buildProbabilityRequest(config, operation, input = {}, namespace) {
   if (!['inspect', 'probe', 'configure', 'reset'].includes(operation)) throw Error('UNKNOWN_PROBABILITY_OPERATION');
@@ -40,9 +41,13 @@ function buildProbabilityRequest(config, operation, input = {}, namespace) {
     const context = (${assertReadonlyContext.toString()})(contents.getLastWebPreferences(), electron.app.getAppPath(), config.archivePath);
     const hash = value => process.mainModule.require('node:crypto').createHash('sha256').update(value).digest('hex');
     const call = async (op, args) => {
-      const code = "(() => { try { return { ok: true, result: (" + ${JSON.stringify(runtimeSource)} + ")(" + JSON.stringify(op) + "," + JSON.stringify(args) + "," + JSON.stringify(config.archivePath) + ") }; } catch (error) { return { ok: false, error: String(error.message) }; } })()";
+      const code = "(() => { try { return { ok: true, result: (" + ${JSON.stringify(runtimeSource)} + ")(" + JSON.stringify(op) + "," + JSON.stringify(args) + "," + JSON.stringify(config.archivePath) + ") }; } catch (error) { return { ok: false, error: String(error.message), notStarted: error.name === 'GveMutationNotStarted' }; } })()";
       const packet = await contents.executeJavaScriptInIsolatedWorld(999, [{ code }], false);
-      if (packet?.ok !== true) throw Error(packet?.error || 'RENDERER_RESULT_UNCONFIRMED');
+      if (packet?.ok !== true) {
+        const error = Error(packet?.error || 'RENDERER_RESULT_UNCONFIRMED');
+        if (packet?.notStarted === true) error.name = 'GveMutationNotStarted';
+        throw error;
+      }
       return packet.result;
     };
     const read = await call(${JSON.stringify(readonly ? operation : 'inspect')}, {}), scopeHash = hash(read.anchor);
@@ -51,10 +56,11 @@ function buildProbabilityRequest(config, operation, input = {}, namespace) {
     const args = { expectedAnchor: read.anchor, expectedRevision: input.revision };
     if (namespace !== null) args.namespace = namespace;
     if (operation === 'configure') args.profile = input.profile;
+    beginMutation();
     const result = await call(operation, args);
     if (hash(result.anchor) !== scopeHash || result.revision !== input.revision + 1) throw Error('PROBABILITY_REVISION_UNCONFIRMED');
     delete result.anchor; return { probability: result, scopeHash, context };
   })()`;
-  return { id: 402, method: 'Runtime.evaluate', params: { expression, awaitPromise: true, returnByValue: true, timeout: 5000 } };
+  return { id: 402, method: 'Runtime.evaluate', params: { expression: withMutationOutcome(expression, (namespace ?? 'probability') + '-' + operation, !readonly), awaitPromise: true, returnByValue: true, timeout: 5000 } };
 }
 module.exports = { buildProbabilityRequest };

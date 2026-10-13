@@ -44,8 +44,8 @@ internal static class Program
                 else if (args.Length == 2 && args[0] == "--launcher-speed-live-approved") await LauncherSpeedLive(int.Parse(args[1]));
                 else if (args.Length == 2 && args[0] == "--direct-live-approved") await DirectLive(int.Parse(args[1]), false);
                 else if (args.Length == 2 && args[0] == "--direct-drops-trial-approved") await DirectLive(int.Parse(args[1]), true);
-                else if (args.Length == 1 && args[0] == "--ui-only") { Models(); ArchiveContracts(); MaterialMessages(); Gates(); await BridgeQueue(); await Pages(); await UiContracts(); await MaterialAvailability(); Packages(); }
-                else { Models(); ArchiveContracts(); MaterialMessages(); Gates(); await BridgeQueue(); DirectContracts(); await Transport(); await Pages(); await UiContracts(); await MaterialAvailability(); Packages(); NativeReadonly(); }
+                else if (args.Length == 1 && args[0] == "--ui-only") { _checks += OutcomeRegressionTests.Run(); Models(); ArchiveContracts(); MaterialMessages(); Gates(); await BridgeQueue(); await Pages(); await UiContracts(); await MaterialAvailability(); Packages(); }
+                else { _checks += OutcomeRegressionTests.Run(); Models(); ArchiveContracts(); MaterialMessages(); Gates(); await BridgeQueue(); DirectContracts(); await Transport(); await Pages(); await UiContracts(); await MaterialAvailability(); Packages(); NativeReadonly(); }
             }
             catch (Exception error) { failure = error; }
             finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }

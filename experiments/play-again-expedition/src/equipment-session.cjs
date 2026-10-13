@@ -172,14 +172,21 @@ function createEquipmentSession(engine, definitions, context, validate) {
   function inspect(){return {installed,profile:installed?{enabled:true}:null,hits,blocked,ready:ready()&&!blocked,canRestore:ready(),
     ownerCurrent:current(),hooksOwned:owned(),newEquipmentOnly:true,doubleValues:true,explicitRng:true,
     generatedKinds:accessorySites.size?['gear','gem','costume','badge']:['gear'],gemBase:definitions.accessories===true,accessoryHits:{...accessoryHits},implementationVersion:5};}
-  return {inspect,configure(profile){validate(profile);if(!ready()||blocked)fail('EQUIPMENT_BUSY_OR_CONFLICT');
-    if(!installed){if(engine.makeItem!==original||own&&own.configurable!==true||accessorySites.size&&(engine.rng!==nativeRng||rngOwn?.writable!==true))fail('EQUIPMENT_HOOK_CONFLICT');
+  function preflight(check) {
+    try { return check(); }
+    catch (cause) { const error = Error(String(cause?.message ?? 'EQUIPMENT_PREFLIGHT_FAILED')); error.name = 'GveMutationNotStarted'; throw error; }
+  }
+  return {mutationOutcomeVersion:1,inspect,configure(profile){preflight(()=>{
+    validate(profile);if(!ready()||blocked)fail('EQUIPMENT_BUSY_OR_CONFLICT');
+    if(!installed&&(engine.makeItem!==original||own&&own.configurable!==true||accessorySites.size&&(engine.rng!==nativeRng||rngOwn?.writable!==true)))fail('EQUIPMENT_HOOK_CONFLICT');
+    });
+    if(!installed){
       try {
         if(accessorySites.size)engine.rng=generatedRng;
         Object.defineProperty(engine,'makeItem',{value:make,writable:true,configurable:true});installed=true;
       }catch(error){if(accessorySites.size&&engine.rng===generatedRng)Object.defineProperty(engine,'rng',rngOwn);throw error;}
     }return inspect();},
-    reset(){if(!ready())fail('EQUIPMENT_BUSY_OR_CONFLICT');if(installed){if(own)Object.defineProperty(engine,'makeItem',own);else delete engine.makeItem;}
+    reset(){preflight(()=>{if(!ready())fail('EQUIPMENT_BUSY_OR_CONFLICT');});if(installed){if(own)Object.defineProperty(engine,'makeItem',own);else delete engine.makeItem;}
       if(installed&&accessorySites.size)Object.defineProperty(engine,'rng',rngOwn);
       installed=false;blocked=null;return inspect();}};
 }

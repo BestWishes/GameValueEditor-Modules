@@ -3,7 +3,8 @@
 // Fixed operations in original preload world 999. No game action or save calls.
 function createProbabilityRuntime(modelFactory, sessionFactory, dropsValidator, siteFactory) {
   const registryKey = Symbol.for('GameValueEditor.PlayAgainExpedition.ProbabilitySession.v1');
-  const fail = code => { throw Error(code); };
+  let mutationStarted = false;
+  const fail = code => { const error = Error(code); if (!mutationStarted) error.name = 'GveMutationNotStarted'; throw error; };
   const parse = raw => {
     if (typeof raw !== 'string' || raw.length > 4 * 1024 * 1024) fail('SAVE_INVALID');
     const save = JSON.parse(raw);
@@ -12,6 +13,7 @@ function createProbabilityRuntime(modelFactory, sessionFactory, dropsValidator, 
     return save;
   };
   return function operate(operation, input, archivePath) {
+    mutationStarted = false;
     if (!['inspect', 'probe', 'configure', 'reset'].includes(operation)) fail('UNKNOWN_PROBABILITY_OPERATION');
     if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.keys(input).some(key => !['expectedAnchor', 'expectedRevision', 'profile', 'namespace'].includes(key))) fail('UNKNOWN_PROBABILITY_ARGUMENT');
@@ -59,6 +61,12 @@ function createProbabilityRuntime(modelFactory, sessionFactory, dropsValidator, 
         if (operation !== 'inspect') fail('READ_RECEIPT_SCOPE_CHANGED');
         registry = null; // Invalidate old receipts when creating the new controller.
       }
+    }
+    // Refresh an inactive pre-outcome cache without restarting the game or
+    // touching applied legacy hooks. Active legacy controls remain restorable.
+    if (registry && registry.control.mutationOutcomeVersion !== 1 && registry.control.inspect().installed === false) {
+      if (operation !== 'inspect') fail('READ_RECEIPT_SCOPE_CHANGED');
+      registry = null;
     }
     const generation = registry?.generation ?? previousGeneration + 1;
     if (!Number.isFinite(window.performance?.timeOrigin)) fail('RENDERER_IDENTITY_UNCONFIRMED');
@@ -230,7 +238,9 @@ function createProbabilityRuntime(modelFactory, sessionFactory, dropsValidator, 
     }
     if (!['inspect', 'probe'].includes(operation)) {
       if (input.expectedAnchor !== anchor || input.expectedRevision !== revision) fail('READ_RECEIPT_SCOPE_CHANGED');
+      if (engine.phase !== 'idle' || state.luckyWheel?.pending) fail('PROBABILITY_OPERATION_NOT_IDLE');
       const before = engine.serialize(), storedBefore = platform.read();
+      mutationStarted = true;
       if (operation === 'configure') {
         outcome = control.configure(input.profile, input.namespace);
       } else {

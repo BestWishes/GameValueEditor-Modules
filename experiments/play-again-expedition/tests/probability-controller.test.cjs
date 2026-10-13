@@ -5,6 +5,7 @@ const crypto = require('node:crypto');
 const vm = require('node:vm');
 const { buildProbabilityRequest } = require('../src/probability-controller.cjs');
 const { discoverProbabilitySites } = require('../src/probability-sites.cjs');
+const assertNotExecuted = require('./assert-not-executed.cjs');
 const config = { processId: 17, executablePath: 'C:/original/game.exe', archivePath: 'C:/original/resources/app.asar', profilePath: 'C:/original/profile' };
 function fixture() {
   const state = { version: 38, rewardClockId: 'private-clock', inventory: [{ uid: 7 }], materials: {}, luckyWheel: null };
@@ -65,15 +66,15 @@ test('configure replaces settings and changes only per-engine methods; reset res
 });
 test('stale revisions and receipts are rejected without retry or game action', async () => {
   const f = fixture(), read = await f.run('inspect'); await f.run('configure', f.input(read));
-  await assert.rejects(f.run('configure', f.input(read)), /READ_RECEIPT_SCOPE_CHANGED/);
-  await assert.rejects(f.run('reset', { scopeHash: 'b'.repeat(64), revision: 1 }), /READ_RECEIPT_SCOPE_CHANGED/);
+  await assertNotExecuted(f.run('configure', f.input(read)), /READ_RECEIPT_SCOPE_CHANGED/);
+  await assertNotExecuted(f.run('reset', { scopeHash: 'b'.repeat(64), revision: 1 }), /READ_RECEIPT_SCOPE_CHANGED/);
   assert.equal(f.actions, 0); assert.equal(f.saves, 0);
 });
 
 test('fixed wheel/drops namespaces coexist and share stale receipt protection', async () => {
   const f = fixture(), read = await f.run('inspect');
   await f.run('configure', f.input(read), 'drops');
-  await assert.rejects(f.run('configure', { ...f.input(read), profile: { wheelBonus: { doublePercent: 25, marqueePercent: 0 } } }, 'wheel'), /READ_RECEIPT_SCOPE_CHANGED/);
+  await assertNotExecuted(f.run('configure', { ...f.input(read), profile: { wheelBonus: { doublePercent: 25, marqueePercent: 0 } } }, 'wheel'), /READ_RECEIPT_SCOPE_CHANGED/);
   const fresh = await f.run('inspect');
   const wheel = await f.run('configure', { scopeHash: fresh.scopeHash, revision: fresh.probability.revision,
     profile: { wheelBonus: { doublePercent: 25, marqueePercent: 0 } } }, 'wheel');
@@ -102,7 +103,7 @@ test('legitimate new loot does not invalidate the probability session', async ()
 });
 test('engine replacement within same renderer invalidates old receipt even for same save', async () => {
   const f = fixture(), read = await f.run('inspect'); f.game.engine = { ...f.engine, state: JSON.parse(JSON.stringify(f.state)) };
-  await assert.rejects(f.run('configure', f.input(read)), /READ_RECEIPT_SCOPE_CHANGED/);
+  await assertNotExecuted(f.run('configure', f.input(read)), /READ_RECEIPT_SCOPE_CHANGED/);
   assert.equal(f.actions, 0); assert.equal(f.saves, 0);
 });
 for (const [label, change] of [
@@ -115,7 +116,7 @@ for (const [label, change] of [
   ['rng', f => { f.engine.rng = () => 0.9; }], ['renderer reload', f => { f.window.performance.timeOrigin++; }],
 ]) test('guard blocks configure after ' + label + ' change', async () => {
   const f = fixture(), read = await f.run('inspect'); change(f);
-  await assert.rejects(f.run('configure', f.input(read))); assert.equal(f.actions, 0); assert.equal(f.saves, 0);
+  await assertNotExecuted(f.run('configure', f.input(read))); assert.equal(f.actions, 0); assert.equal(f.saves, 0);
 });
 test('third-party hook conflicts are reported and not overwritten on reset', async () => {
   const f = fixture(), read = await f.run('inspect'); await f.run('configure', f.input(read));
@@ -127,10 +128,10 @@ test('new controller source can upgrade only a previously uninstalled metadata c
   const f = fixture(), old = await f.run('inspect'), key = Symbol.for('GameValueEditor.PlayAgainExpedition.ProbabilitySession.v1');
   f.window[key].implementationVersion = 1;
   const next = await f.run('inspect'); assert.notEqual(next.scopeHash, old.scopeHash); assert.equal(next.probability.report.installed, false);
-  await assert.rejects(f.run('configure', f.input(old)), /READ_RECEIPT_SCOPE_CHANGED/);
+  await assertNotExecuted(f.run('configure', f.input(old)), /READ_RECEIPT_SCOPE_CHANGED/);
   await f.run('configure', f.input(next)); f.window[key].implementationVersion = 1;
   const readable = await f.run('inspect'); assert.equal(readable.probability.report.installed, true);
-  await assert.rejects(f.run('configure', f.input(readable)), /IMPLEMENTATION_CHANGED_RESTORE_REQUIRED/);
+  await assertNotExecuted(f.run('configure', f.input(readable)), /IMPLEMENTATION_CHANGED_RESTORE_REQUIRED/);
   const restored = await f.run('reset', { scopeHash: readable.scopeHash, revision: readable.probability.revision });
   assert.equal(restored.probability.outcome.restored, true);
   const upgraded = await f.run('inspect'); assert.notEqual(upgraded.scopeHash, readable.scopeHash);
@@ -162,4 +163,49 @@ test('old wheel and drop controls can be restored independently before source up
 test('copy-only probe rejects arbitrary test source/profile inputs', () => {
   assert.throws(() => buildProbabilityRequest(config, 'probe', { expression: 'code' }), /UNKNOWN/);
   assert.throws(() => buildProbabilityRequest(config, 'probe', { profile: { drops: { guardianTicketPercent: 100 } } }), /UNKNOWN/);
+});
+for (const namespace of ['wheel', 'drops']) test(namespace + ' busy configure/reset are definite rejections and then permit refresh/restore', async () => {
+  const f = fixture(), read = await f.run('inspect');
+  const profile = namespace === 'wheel' ? { wheelBonus: { doublePercent: 10, marqueePercent: 0 } } : f.input(read).profile;
+  f.engine.phase = 'fighting';
+  await assertNotExecuted(f.run('configure', { scopeHash: read.scopeHash, revision: 0, profile }, namespace), /OPERATION_NOT_IDLE/);
+  assert.equal(f.engine.hasOwnProperty('victory'), true); assert.equal((await f.run('inspect')).probability.report.installed, false);
+  f.engine.phase = 'idle';
+  const fresh = await f.run('inspect'), applied = await f.run('configure', { scopeHash: fresh.scopeHash, revision: 0, profile }, namespace);
+  f.state.luckyWheel = { pending: {} };
+  await assertNotExecuted(f.run('reset', { scopeHash: applied.scopeHash, revision: 1 }, namespace), /OPERATION_NOT_IDLE/);
+  assert.equal((await f.run('inspect')).probability.report.installed, true);
+  f.state.luckyWheel.pending = null;
+  const restored = await f.run('reset', { scopeHash: applied.scopeHash, revision: 1 }, namespace);
+  assert.equal(restored.probability.outcome.restored, true); assert.equal(f.saves, 0); assert.equal(f.actions, 0);
+});
+test('post-configuration readback errors with an ordinary stale-read code remain uncertain', async () => {
+  const f = fixture(), read = await f.run('inspect'), serialize = f.engine.serialize;
+  const key = Symbol.for('GameValueEditor.PlayAgainExpedition.ProbabilitySession.v1');
+  f.engine.serialize = function () {
+    if (f.window[key].control.inspect().installed) throw Error('READ_RECEIPT_SCOPE_CHANGED');
+    return serialize.call(this);
+  };
+  await assert.rejects(f.run('configure', f.input(read)), /READ_RECEIPT_SCOPE_CHANGED/);
+  assert.equal(f.window[key].control.inspect().installed, true); assert.equal(f.actions, 0); assert.equal(f.saves, 0);
+});
+test('missing renderer reply after configuration does not become a definite rejection', async () => {
+  const f = fixture(), read = await f.run('inspect'), dispatch = f.contents.executeJavaScriptInIsolatedWorld;
+  let calls = 0;
+  f.contents.executeJavaScriptInIsolatedWorld = async (...args) => { const result = await dispatch(...args); return ++calls === 2 ? {} : result; };
+  await assert.rejects(f.run('configure', f.input(read)), /RENDERER_RESULT_UNCONFIRMED/);
+  assert.equal((await f.run('inspect')).probability.report.installed, true);
+});
+test('inactive pre-outcome caches refresh automatically; an active legacy controller remains restorable', async () => {
+  const f = fixture(), key = Symbol.for('GameValueEditor.PlayAgainExpedition.ProbabilitySession.v1');
+  const old = await f.run('inspect'); delete f.window[key].control.mutationOutcomeVersion;
+  const fresh = await f.run('inspect'); assert.notEqual(fresh.scopeHash, old.scopeHash);
+  const applied = await f.run('configure', f.input(fresh));
+  const control = f.window[key].control; delete control.mutationOutcomeVersion;
+  const active = await f.run('inspect'); assert.equal(f.window[key].control, control); assert.equal(active.scopeHash, applied.scopeHash);
+  f.engine.phase = 'fighting';
+  await assertNotExecuted(f.run('reset', { scopeHash: active.scopeHash, revision: 1 }), /OPERATION_NOT_IDLE/);
+  f.engine.phase = 'idle';
+  assert.equal((await f.run('reset', { scopeHash: active.scopeHash, revision: 1 })).probability.outcome.restored, true);
+  assert.notEqual((await f.run('inspect')).scopeHash, active.scopeHash);
 });

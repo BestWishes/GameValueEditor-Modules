@@ -87,19 +87,27 @@ function createFateSession(engine, qualities, context, validate) {
       original: Object.fromEntries(['blue','purple','immortal','mythic'].map((key, i) => [key, qualities[i].chance * 100])),
       preservesPity: true, singleAndTen: true };
   }
+  function preflight(check) {
+    try { return check(); }
+    catch (cause) { const error = Error(String(cause?.message ?? 'FATE_PREFLIGHT_FAILED')); error.name = 'GveMutationNotStarted'; throw error; }
+  }
   return {
+    mutationOutcomeVersion: 1,
     inspect,
     configure(value) {
-      const next = validate(value);
-      if (!ready() || blocked) fail('FATE_BUSY_OR_CONFLICT');
+      const next = preflight(() => {
+        const next = validate(value);
+        if (!ready() || blocked) fail('FATE_BUSY_OR_CONFLICT');
+        if (!installed && (engine.sampleFate !== original || own && own.configurable !== true)) fail('FATE_HOOK_CONFLICT');
+        return next;
+      });
       if (!installed) {
-        if (engine.sampleFate !== original || own && own.configurable !== true) fail('FATE_HOOK_CONFLICT');
         Object.defineProperty(engine, 'sampleFate', { value: sampler, configurable: true, writable: true }); installed = true;
       }
       profile = next; return inspect();
     },
     reset() {
-      if (!ready()) fail('FATE_BUSY_OR_CONFLICT');
+      preflight(() => { if (!ready()) fail('FATE_BUSY_OR_CONFLICT'); });
       if (installed) { if (own) Object.defineProperty(engine, 'sampleFate', own); else delete engine.sampleFate; }
       installed = false; profile = null; blocked = null; return inspect();
     }

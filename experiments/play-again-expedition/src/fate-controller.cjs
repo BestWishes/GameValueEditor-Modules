@@ -8,12 +8,14 @@ const { createProbabilityModel } = require('./probability-model.cjs');
 const { createProbabilitySession } = require('./probability-session.cjs');
 const { discoverProbabilitySites } = require('./probability-sites.cjs');
 const { createWheelRngBridge } = require('./wheel-rng-bridge.cjs');
+const { withMutationOutcome } = require('./mutation-outcome.cjs');
 
 // Shared module-local lifecycle; each rule has its own registry and native factory.
 function createFateRuntime(sessionFactory, validate, kind = 'fate', wheelProbe = null,generatedProbe=null) {
   const key = Symbol.for('GameValueEditor.PlayAgainExpedition.' + (kind === 'fate' ? 'Fate' : 'Equipment') + 'Session.v1');
   return function operate(operation, input, archivePath, qualities) {
-    const fail = code => { throw Error(code); };
+    let mutationStarted = false;
+    const fail = code => { const error = Error(code); if (!mutationStarted) error.name = 'GveMutationNotStarted'; throw error; };
     if(input.area!==undefined&&(kind!=='equipment'||operation!=='probe'||!['gear','shop','wheel','gem-base','gem-wheel'].includes(input.area)))fail('UNKNOWN_FATE_ARGUMENT');
     const game = window.expedition, engine = game?.engine, state = engine?.state, platform = game?.platform;
     if (game?.getUi?.()?.entered !== true) fail('GAME_NOT_ENTERED');
@@ -38,7 +40,7 @@ function createFateRuntime(sessionFactory, validate, kind = 'fate', wheelProbe =
     if (registry && (registry.brand !== 'gve-' + kind + '-v1' || !Number.isSafeInteger(registry.revision) || !Number.isSafeInteger(registry.generation))) fail('FATE_REGISTRY_CONFLICT');
     const generation = registry?.generation ?? 0;
     const implementationVersion=kind==='equipment'?5:1;
-    const legacyInactive=registry&&kind==='equipment'&&registry.implementationVersion!==implementationVersion&&
+    const legacyInactive=registry&&(kind==='equipment'&&registry.implementationVersion!==implementationVersion||registry.control.mutationOutcomeVersion!==1)&&
       registry.control.inspect().installed===false&&registry.control.inspect().hooksOwned===true;
     if (!registry || registry.engine !== engine || registry.platform !== platform || registry.state !== state || registry.slot !== slot || registry.clock !== clock ||
       registry.origin !== window.performance.timeOrigin||legacyInactive) {
@@ -56,6 +58,9 @@ function createFateRuntime(sessionFactory, validate, kind = 'fate', wheelProbe =
       if (input.expectedAnchor !== anchor || input.expectedRevision !== registry.revision) fail('READ_RECEIPT_SCOPE_CHANGED');
       if(operation==='configure'&&upgradeRequired)fail('EQUIPMENT_UPGRADE_REQUIRED');
       if(operation==='configure'&&probabilityUpgradeRequired)fail('EQUIPMENT_PROBABILITY_UPGRADE_REQUIRED');
+      const report=registry.control.inspect();
+      if(operation==='configure'&&report.ready===false||operation==='reset'&&report.canRestore===false)fail(kind==='fate'?'FATE_BUSY_OR_CONFLICT':'EQUIPMENT_BUSY_OR_CONFLICT');
+      mutationStarted = true;
       if (operation === 'configure') registry.control.configure(input.profile); else registry.control.reset();
       registry.revision++;
     }
@@ -159,18 +164,23 @@ function buildSessionRuleRequest(config, operation, input = {}, kind = 'fate') {
     const qualities=${kind==='fate' ? "process.mainModule.require(config.archivePath+'/runtime/src/fate-data.js').FATE_QUALITIES.map(row=>({quality:row.quality,name:row.name,chance:row.chance}))" : `(${readEquipmentDefinitions.toString()})(name=>process.mainModule.require(name),config.archivePath)`};
     const hash=value=>process.mainModule.require('node:crypto').createHash('sha256').update(value).digest('hex');
     const call=async(op,args)=>{
-      const code="(()=>{try{return {ok:true,result:("+${JSON.stringify(runtime)}+")("+JSON.stringify(op)+","+JSON.stringify(args)+","+JSON.stringify(config.archivePath)+","+JSON.stringify(qualities)+")};}catch(error){return {ok:false,error:String(error.message)};}})()";
+      const code="(()=>{try{return {ok:true,result:("+${JSON.stringify(runtime)}+")("+JSON.stringify(op)+","+JSON.stringify(args)+","+JSON.stringify(config.archivePath)+","+JSON.stringify(qualities)+")};}catch(error){return {ok:false,error:String(error.message),notStarted:error.name==='GveMutationNotStarted'};}})()";
       const packet=await contents.executeJavaScriptInIsolatedWorld(999,[{code}],false);
-      if(packet?.ok!==true) throw Error(packet?.error||'RENDERER_RESULT_UNCONFIRMED'); return packet.result;
+      if(packet?.ok!==true) {
+        const error=Error(packet?.error||'RENDERER_RESULT_UNCONFIRMED');
+        if(packet?.notStarted===true)error.name='GveMutationNotStarted';
+        throw error;
+      } return packet.result;
     };
     const read=await call(${JSON.stringify(readonly ? operation : 'inspect')},${readonly?'input':'{}'}),scopeHash=hash(read.anchor);
     if(operation==='inspect'||operation==='probe'){delete read.anchor;return {${kind}:read,scopeHash,context};}
     if(scopeHash!==input.scopeHash||read.revision!==input.revision) throw Error('READ_RECEIPT_SCOPE_CHANGED');
+    beginMutation();
     const result=await call(operation,{expectedAnchor:read.anchor,expectedRevision:input.revision,...(operation==='configure'?{profile:input.profile}:{})});
     if(hash(result.anchor)!==scopeHash||result.revision!==input.revision+1) throw Error('FATE_REVISION_UNCONFIRMED');
     delete result.anchor; return {${kind}:result,scopeHash,context};
   })()`;
-  return {id:402,method:'Runtime.evaluate',params:{expression,awaitPromise:true,returnByValue:true,timeout:5000}};
+  return {id:402,method:'Runtime.evaluate',params:{expression:withMutationOutcome(expression,kind+'-'+operation,!readonly),awaitPromise:true,returnByValue:true,timeout:5000}};
 }
 const buildFateRequest=(config,operation,input)=>buildSessionRuleRequest(config,operation,input,'fate');
 const buildEquipmentRequest=(config,operation,input)=>buildSessionRuleRequest(config,operation,input,'equipment');

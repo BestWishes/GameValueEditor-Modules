@@ -5,6 +5,7 @@ const crypto = require('node:crypto');
 const vm = require('node:vm');
 const { buildMaterialsRequest } = require('../src/all-materials-controller.cjs');
 const { createMaterialsRuntime } = require('../src/all-materials-runtime.cjs');
+const assertNotExecuted = require('./assert-not-executed.cjs');
 const config = { processId: 17, executablePath: 'C:\\original\\game.exe', archivePath: 'C:\\original\\resources\\app.asar', profilePath: 'C:\\original\\profile' };
 function fixture() {
   const state = { version: 38, rewardClockId: 'private-clock', materials: {}, tickets: 2, abyss: { tickets: 2 },
@@ -85,7 +86,7 @@ test('opaque activity is bounded data, not script or activity allowlist; mismatc
   for (const journeyMode of ['', null, undefined, 3, {}, 'x'.repeat(129)])
     assert.throws(() => f.run('set', { ...input, journeyMode }), /INVALID_CONTROLLER_SCOPE/);
   f.game.engine.mode = 'journey';
-  await assert.rejects(f.run('set', input), /READ_RECEIPT_SCOPE_CHANGED/); assert.equal(f.saves, 0);
+  await assertNotExecuted(f.run('set', input), /READ_RECEIPT_SCOPE_CHANGED/); assert.equal(f.saves, 0);
   const fresh = await f.run('list'); assert.equal((await f.run('set', f.setInput(fresh))).material.status, 'storage-verified');
 });
 test('wrong identity receipt, instance/build/profile/world contract prevent writes', async () => {
@@ -97,13 +98,13 @@ test('wrong identity receipt, instance/build/profile/world contract prevent writ
     f => { f.electron.app.getAppPath = () => 'other'; },
   ]) {
     const f = fixture(), read = await f.run('list'); mutate(f);
-    await assert.rejects(f.run('set', f.setInput(read))); assert.equal(f.saves, 0);
+    await assertNotExecuted(f.run('set', f.setInput(read))); assert.equal(f.saves, 0);
   }
 });
 test('scope hash malformed or wrong is rejected, not patched or retried', async () => {
   const f = fixture(), read = await f.run('list');
   assert.throws(() => f.run('set', { ...f.setInput(read), scopeHash: 'bad' }), /INVALID_CONTROLLER_SCOPE/);
-  await assert.rejects(f.run('set', { ...f.setInput(read), scopeHash: 'a'.repeat(64) }), /READ_RECEIPT_SCOPE_CHANGED/);
+  await assertNotExecuted(f.run('set', { ...f.setInput(read), scopeHash: 'a'.repeat(64) }), /READ_RECEIPT_SCOPE_CHANGED/);
   assert.equal(f.saves, 0);
 });
 test('runtime minor updates do not block material read or same-value no-op', async () => {
@@ -118,4 +119,30 @@ test('flush error is not save success and uncertain save is never auto-retried o
   assert.equal(f.saves, 1);
   const g = fixture(), read2 = await g.run('list'); g.game.platform.save = () => false;
   const uncertain = await g.run('set', g.setInput(read2)); assert.equal(uncertain.material.status, 'uncertain-after-save'); assert.equal(g.flushes, 0);
+});
+test('a battle starting between read and set is a definite rejection; fresh idle operation can proceed', async () => {
+  const f = fixture(), read = await f.run('list'), dispatch = f.contents.executeJavaScriptInIsolatedWorld;
+  let calls = 0;
+  f.contents.executeJavaScriptInIsolatedWorld = async (...args) => {
+    if (++calls === 2) f.game.engine.phase = 'fighting';
+    return dispatch(...args);
+  };
+  await assertNotExecuted(f.run('set', f.setInput(read)), /MATERIAL_BATTLE_ACTIVE/);
+  assert.equal(f.saves, 0); assert.equal(f.flushes, 0); assert.equal(f.state.materials.stones, 2);
+  f.game.engine.phase = 'idle';
+  const fresh = await f.run('list');
+  assert.equal((await f.run('set', f.setInput(fresh))).material.status, 'storage-verified'); assert.equal(f.saves, 1);
+});
+test('a stale material count is not an uncertain write and a same-value receipt stays a no-op', async () => {
+  const f = fixture(), read = await f.run('list');
+  await assertNotExecuted(f.run('set', { ...f.setInput(read), expectedValue: 1 }), /MATERIAL_VALUE_CHANGED/);
+  assert.equal(f.saves, 0); assert.equal(f.state.materials.stones, 2);
+  assert.equal((await f.run('set', { ...f.setInput(await f.run('list')), targetValue: 2 })).material.status, 'unchanged');
+});
+test('a failure after attempted assignment is not marked not-executed even when rolled back before save', async () => {
+  const f = fixture(), read = await f.run('list'), serialize = f.game.engine.serialize;
+  f.game.engine.serialize = function () { const result = serialize.call(this); return this.state.materials.stones === 3 ? result.replace('"stones":3', '"stones":4') : result; };
+  const result = await f.run('set', f.setInput(read));
+  assert.equal(result.material.status, 'rejected-before-save'); assert.equal(result.protocol, undefined);
+  assert.equal(result.material.liveRestored, true); assert.equal(f.saves, 0);
 });

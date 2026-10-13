@@ -30,7 +30,9 @@ catalog.json
 - 放置斩魔录：[`game.fzzml` v2.1.5](games/fzzml/docs/README.md)
 - 不问凡尘：[`game.worldapart` v1.3.5](games/worldapart/docs/README.md)
 - [`game.last-epoch` v0.5.7](games/last-epoch/docs/README.md)，普通离线与完全离线入口共用，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)
-- [`game.play-again-expedition` v0.1.2](games/play-again-expedition/docs/LOCAL_USE.md)，包含“材料”“大转盘”“掉落”“命格”“装备”，加载要求主程序至少 0.5.2；建议配套 0.5.3 获取本次查新/回退修复。直接接入正常启动的原游戏，无须启动参数或连接准备。大转盘单抽/十连共用概率规则，新生成装备、宝石（含基础属性）、时装、徽章的数值可取原生范围满值。
+- [`game.play-again-expedition` v0.1.3](games/play-again-expedition/docs/LOCAL_USE.md)，包含“材料”“大转盘”“掉落”“命格”“装备”，加载要求主程序至少 0.5.2；建议配套当前主程序。直接接入正常启动的原游戏，无须启动参数或连接准备。大转盘单抽/十连共用概率规则，新生成装备、宝石（含基础属性）、时装、徽章的数值可取原生范围满值。
+
+2026-10-13 远征 0.1.3 区分写入前拒绝和结果不确定：未执行的忙碌/旧回执拒绝可刷新后继续；已尝试写入后的失败仍不自动重试。旧不确定会话记录不自动解锁，主程序不改、不重发。详细方案与三轮复核见 [发布记录](games/play-again-expedition/docs/RELEASE_0_1_3.md)。
 
 2026-10-09 远征修复不再依赖旧构建哈希、固定运行时版本或概率列号，已用当前 0.116.73 的实际消费者核验，见[小更新修复记录](games/play-again-expedition/docs/SMALL_UPDATE_LOCAL.md)。此前审查把放置斩魔录误写成不问凡尘，现已纠正：放置斩魔录是 `game.fzzml`，不问凡尘是 `game.worldapart`。
 

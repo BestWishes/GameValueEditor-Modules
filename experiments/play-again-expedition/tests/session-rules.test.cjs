@@ -3,6 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 const {createFateSession,validateFateProfile}=require('../src/fate-session.cjs');
 const {createEquipmentSession,validateEquipmentProfile}=require('../src/equipment-session.cjs');
 const {buildFateRequest,buildEquipmentRequest}=require('../src/fate-controller.cjs');
+const assertNotExecuted=require('./assert-not-executed.cjs');
 const qualities=[3,4,5,6].map((quality,i)=>({quality,name:String(quality),chance:[.7,.25,.04,.01][i]}));
 const folder=__dirname.replaceAll('\\','/');
 const rollAffix=vm.runInNewContext('(function rollAffix(rng){return {key:"power",value:Math.floor(rng.call(this,"affix",3)*11)+10};})',{}, {filename:folder+'/affixes.js'});
@@ -51,6 +52,30 @@ function fixture(){
  return {engine,stored,game,window,run,config,process,preferences};
 }
 const blue={blue:100,purple:0,immortal:0,mythic:0};
+for(const kind of ['fate','equipment'])test(kind+' inactive pre-outcome cache upgrades without restart; active legacy hooks are preserved and restorable',async()=>{
+ const f=fixture(),key=Symbol.for('GameValueEditor.PlayAgainExpedition.'+(kind==='fate'?'Fate':'Equipment')+'Session.v1');
+ const old=await f.run(kind,'inspect');delete f.window[key].control.mutationOutcomeVersion;
+ const fresh=await f.run(kind,'inspect');assert.notEqual(fresh.scopeHash,old.scopeHash);
+ const profile=kind==='fate'?blue:{enabled:true},applied=await f.run(kind,'configure',{scopeHash:fresh.scopeHash,revision:0,profile});
+ const control=f.window[key].control;delete control.mutationOutcomeVersion;
+ const active=await f.run(kind,'inspect');assert.equal(f.window[key].control,control);assert.equal(active.scopeHash,applied.scopeHash);
+ f.engine.phase='fighting';await assertNotExecuted(f.run(kind,'reset',{scopeHash:active.scopeHash,revision:1}),/BUSY_OR_CONFLICT/);
+ f.engine.phase='idle';await f.run(kind,'reset',{scopeHash:active.scopeHash,revision:1});
+ assert.notEqual((await f.run(kind,'inspect')).scopeHash,active.scopeHash);
+});
+for(const kind of ['fate','equipment'])test(kind+' busy rejection permits refresh/apply and later restore without game restart',async()=>{
+ const f=fixture(),read=await f.run(kind,'inspect'),profile=kind==='fate'?blue:{enabled:true};
+ const method=kind==='fate'?'sampleFate':'makeItem',native=f.engine[method];
+ f.engine.phase='fighting';
+ await assertNotExecuted(f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile}),/BUSY_OR_CONFLICT/);
+ assert.equal(f.engine[method],native);
+ f.engine.phase='idle';const fresh=await f.run(kind,'inspect');
+ const applied=await f.run(kind,'configure',{scopeHash:fresh.scopeHash,revision:0,profile});
+ f.engine.phase='fighting';
+ await assertNotExecuted(f.run(kind,'reset',{scopeHash:applied.scopeHash,revision:1}),/BUSY_OR_CONFLICT/);
+ assert.notEqual(f.engine[method],native);
+ f.engine.phase='idle';await f.run(kind,'reset',{scopeHash:applied.scopeHash,revision:1});assert.equal(f.engine[method],native);
+});
 test('strict fate and equipment schemas reject absent, extra, nonfinite or wrong values',()=>{
  for(const p of [{}, {...blue,blue:NaN},{...blue,blue:101},{...blue,purple:1},{...blue,code:'x'},[]])assert.throws(()=>validateFateProfile(p));
  for(const p of [{},{enabled:false},{enabled:true,other:1},[]])assert.throws(()=>validateEquipmentProfile(p));
@@ -64,21 +89,21 @@ for(const kind of ['fate','equipment']) {
   assert.doesNotMatch(JSON.stringify(read),/private-clock|"anchor"/);
   const after=await f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile});
   assert.equal(after[kind].report.installed,true);assert.equal(f.engine.serialize(),before);
-  await assert.rejects(f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile}),/READ_RECEIPT_SCOPE_CHANGED/);
+  await assertNotExecuted(f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile}),/READ_RECEIPT_SCOPE_CHANGED/);
   const reset=await f.run(kind,'reset',{scopeHash:after.scopeHash,revision:1});assert.equal(reset[kind].report.installed,false);assert.equal(f.engine[method],original);
  });
  test(kind+' conflicts and changed sessions do not overwrite foreign hooks',async()=>{
   const f=fixture(),read=await f.run(kind,'inspect');
   const after=await f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile});
   const method=kind==='fate'?'sampleFate':'makeItem',other=()=>123;f.engine[method]=other;
-  await assert.rejects(f.run(kind,'reset',{scopeHash:after.scopeHash,revision:1}));assert.equal(f.engine[method],other);
+  await assertNotExecuted(f.run(kind,'reset',{scopeHash:after.scopeHash,revision:1}));assert.equal(f.engine[method],other);
   f.game.engine=new Engine(f.engine.serialize(),()=>.5);
-  await assert.rejects(f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile}),/READ_RECEIPT_SCOPE_CHANGED/);
+  await assertNotExecuted(f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile}),/READ_RECEIPT_SCOPE_CHANGED/);
  });
  test(kind+' battle, wrong identity and duplicate slots reject without changing state',async()=>{
   for(const mutate of [f=>{f.engine.phase='fighting';},f=>{f.engine.state.rewardClockId='wrong';},f=>{f.stored.set('zseb-expedition-v1-slot-1',f.engine.serialize());}]) {
    const f=fixture(),read=await f.run(kind,'inspect');mutate(f);const before=f.engine.serialize();
-   await assert.rejects(f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile}));assert.equal(f.engine.serialize(),before);
+   await assertNotExecuted(f.run(kind,'configure',{scopeHash:read.scopeHash,revision:0,profile}));assert.equal(f.engine.serialize(),before);
   }
  });
  test(kind+' request cannot inject operations, code or scope extras',()=>{
@@ -159,7 +184,7 @@ test('equipment upgrade keeps an applied legacy hook restorable and activates ne
  registry.implementationVersion=3; // Applied 0.1.0 generation rules remain owned and restorable.
  const legacy=await f.run('equipment','inspect');assert.equal(legacy.equipment.report.upgradeRequired,true);
  assert.equal(legacy.equipment.report.ready,false);assert.equal(legacy.equipment.report.canRestore,true);assert.equal(f.engine.makeItem,method);
- await assert.rejects(f.run('equipment','configure',{scopeHash:enabled.scopeHash,revision:1,profile:{enabled:true}}),/EQUIPMENT_UPGRADE_REQUIRED/);
+ await assertNotExecuted(f.run('equipment','configure',{scopeHash:enabled.scopeHash,revision:1,profile:{enabled:true}}),/EQUIPMENT_UPGRADE_REQUIRED/);
  const reset=await f.run('equipment','reset',{scopeHash:legacy.scopeHash,revision:1});assert.equal(reset.equipment.report.installed,false);
  const current=await f.run('equipment','inspect');assert.equal(current.equipment.report.implementationVersion,5);assert.equal(current.equipment.report.ready,true);
  assert.notEqual(current.scopeHash,legacy.scopeHash);assert.equal(current.equipment.revision,0);
@@ -225,12 +250,12 @@ test('old active probability controller requires explicit independent restore be
  const f=fixture(),key=Symbol.for('GameValueEditor.PlayAgainExpedition.ProbabilitySession.v1');
  f.window[key]={engine:f.engine,implementationVersion:15,control:{inspect:()=>({installed:true})}};
  const read=await f.run('equipment','inspect');assert.equal(read.equipment.report.probabilityUpgradeRequired,true);assert.equal(read.equipment.report.ready,false);
- await assert.rejects(f.run('equipment','configure',{scopeHash:read.scopeHash,revision:0,profile:{enabled:true}}),/EQUIPMENT_PROBABILITY_UPGRADE_REQUIRED/);
+ await assertNotExecuted(f.run('equipment','configure',{scopeHash:read.scopeHash,revision:0,profile:{enabled:true}}),/EQUIPMENT_PROBABILITY_UPGRADE_REQUIRED/);
  assert.equal(read.equipment.report.installed,false);delete f.window[key];const current=await f.run('equipment','inspect');assert.equal(current.equipment.report.ready,true);
 });
 test('generation configuration rolls back its RNG if installing the item hook fails',()=>{
  const f=fixture(),source=f.engine.rng;
  const engine=new Proxy(f.engine,{defineProperty(target,key,descriptor){if(key==='makeItem')throw Error('native install failed');return Reflect.defineProperty(target,key,descriptor);}});
  const control=createEquipmentSession(engine,{...definitions,accessories:true},{archivePath:folder,assertCurrent:()=>true},validateEquipmentProfile);
- assert.throws(()=>control.configure({enabled:true}),/native install failed/);assert.equal(f.engine.rng,source);assert.equal(control.inspect().installed,false);
+ assert.throws(()=>control.configure({enabled:true}),error=>error.message==='native install failed'&&error.name!=='GveMutationNotStarted');assert.equal(f.engine.rng,source);assert.equal(control.inspect().installed,false);
 });

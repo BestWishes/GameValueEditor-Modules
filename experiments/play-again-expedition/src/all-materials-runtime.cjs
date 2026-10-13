@@ -23,7 +23,8 @@ function createMaterialsRuntime() {
     { id: 'recruitTickets', name: '招募券', category: '票券', minimum: 0, maximum: 1000000000, path: ['tickets'] },
     { id: 'abyssTickets', name: '深渊挑战券', category: '门票', minimum: 0, maximum: 1000000000, path: ['abyss', 'tickets'] },
   );
-  const fail = code => { throw Error(code); };
+  let mutationStarted = false;
+  const fail = code => { const error = Error(code); if (!mutationStarted) error.name = 'GveMutationNotStarted'; throw error; };
   const ownData = (object, key) => {
     if (!object || typeof object !== 'object' || Array.isArray(object)) return null;
     const descriptor = Object.getOwnPropertyDescriptor(object, key);
@@ -65,6 +66,7 @@ function createMaterialsRuntime() {
     Object.keys(save.characters).sort(), [...save.owned].sort((a, b) => a - b),
   ]);
   return function materialsRuntime(operation, input = {}) {
+    mutationStarted = false;
     if (!['catalog', 'list', 'set'].includes(operation)) fail('UNKNOWN_MATERIAL_OPERATION');
     if (!input || typeof input !== 'object' || Array.isArray(input)) fail('INVALID_MATERIAL_INPUT');
     const allowedKeys = operation === 'set' ? ['materialId', 'expectedValue', 'targetValue', 'slot', 'journeyMode', 'anchor'] : [];
@@ -152,6 +154,7 @@ function createMaterialsRuntime() {
     if (!leafStillCurrent(input.expectedValue) || !storageStillCurrent() || engine.phase !== 'idle' || !wheelIdle() || platform.storageBlocked === true || !leafStillCurrent(input.expectedValue)) fail('CHANGED_BEFORE_ASSIGNMENT');
     let afterSave;
     try {
+      mutationStarted = true;
       leaf.parent[leaf.key] = input.targetValue;
       afterSave = engine.serialize();
       const after = parseSave(afterSave), afterLeaf = locate(after, definition);

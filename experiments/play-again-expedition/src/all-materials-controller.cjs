@@ -1,6 +1,7 @@
 'use strict';
 const { createMaterialsRuntime } = require('./all-materials-runtime.cjs');
 const { assertReadonlyContext } = require('./read-context-contract.cjs');
+const { withMutationOutcome } = require('./mutation-outcome.cjs');
 
 // Assemble only fixed operations. User input is JSON data, never source code.
 function buildMaterialsRequest(config, operation, input = {}) {
@@ -35,9 +36,13 @@ function buildMaterialsRequest(config, operation, input = {}) {
     const context = (${guardSource})(contents.getLastWebPreferences(), electron.app.getAppPath(), config.archivePath);
     const hash = value => process.mainModule.require('node:crypto').createHash('sha256').update(value).digest('hex');
     const call = async (op, args) => {
-      const code = "'use strict'; (() => { try { return { ok: true, result: (" + ${JSON.stringify(factorySource)} + ")()(" + JSON.stringify(op) + "," + JSON.stringify(args) + ") }; } catch (error) { return { ok: false, error: String(error.message) }; } })()";
+      const code = "'use strict'; (() => { try { return { ok: true, result: (" + ${JSON.stringify(factorySource)} + ")()(" + JSON.stringify(op) + "," + JSON.stringify(args) + ") }; } catch (error) { return { ok: false, error: String(error.message), notStarted: error.name === 'GveMutationNotStarted' }; } })()";
       const packet = await contents.executeJavaScriptInIsolatedWorld(999, [{ code }], false);
-      if (packet?.ok !== true) throw Error(packet?.error || 'RENDERER_RESULT_UNCONFIRMED');
+      if (packet?.ok !== true) {
+        const error = Error(packet?.error || 'RENDERER_RESULT_UNCONFIRMED');
+        if (packet?.notStarted === true) error.name = 'GveMutationNotStarted';
+        throw error;
+      }
       return packet.result;
     };
     const read = await call('list', {});
@@ -50,6 +55,7 @@ function buildMaterialsRequest(config, operation, input = {}) {
     const args = { ...input, anchor: read.anchor };
     delete args.scopeHash;
     // Full snapshot capture, assignment, save and comparison are synchronous in ONE renderer dispatch.
+    beginMutation();
     const material = await call('set', args);
     const beforeHash = typeof material.beforeSave === 'string' ? hash(material.beforeSave) : null;
     const afterHash = typeof material.afterSave === 'string' ? hash(material.afterSave) : null;
@@ -61,7 +67,7 @@ function buildMaterialsRequest(config, operation, input = {}) {
     }
     return { material, scopeHash, beforeHash, afterHash, context, flushRequested, flushError };
   })()`;
-  return { id: 401, method: 'Runtime.evaluate', params: { expression, awaitPromise: true, returnByValue: true, timeout: 5000 } };
+  return { id: 401, method: 'Runtime.evaluate', params: { expression: withMutationOutcome(expression, 'materials-' + operation, operation === 'set'), awaitPromise: true, returnByValue: true, timeout: 5000 } };
 }
 
 module.exports = { buildMaterialsRequest };

@@ -338,12 +338,14 @@ internal sealed class ExpeditionClient : IExpeditionClient
         {
             var observation = Send(bridge.Uri, request, name.StartsWith("materials-", StringComparison.Ordinal) ? 401 : 402).GetAwaiter().GetResult();
             bridge.AssertEndpoint();
+            MutationOutcome.ThrowIfRejected(observation, name, gate);
             _ = Scope(observation);
             confirm?.Invoke(observation);
             gate?.Confirm();
             bridge.Finish(); ConnectionWarning = bridge.Warning;
             return new(session, observation, bridge.Warning);
         }
+        catch (MutationRejectedException) { throw; }
         catch { gate?.Uncertain(); throw; }
     }
 
@@ -393,7 +395,7 @@ internal sealed class ExpeditionClient : IExpeditionClient
         }
     }
 
-    internal static string ExplainGuard(string code) => code switch
+    internal static string ExplainGuard(string code, bool notExecuted = false) => code switch
     {
         "GAME_NOT_ENTERED" or "GAME_NOT_READY" => "请先进入远征存档，再刷新模块。",
         "JOURNEY_MODE_NOT_SUPPORTED" => "当前模块版本无法读取这份材料数据，请使用新版模块后刷新。",
@@ -422,8 +424,27 @@ internal sealed class ExpeditionClient : IExpeditionClient
         "EQUIPMENT_PROBABILITY_UPGRADE_REQUIRED" => "请先在大转盘、掉落页恢复旧版已应用规则，刷新这些页面与装备页后再应用；无需重启。",
         "EQUIPMENT_CONSUMER_CHANGED" or "EQUIPMENT_CONTRACT_CHANGED" => "当前装备生成公式尚未确认，未启用满值规则；其它内容页面不受影响。",
         "EQUIPMENT_GEM_CONSUMER_CHANGED" or "EQUIPMENT_ACCESSORY_CONSUMER_CHANGED" => "当前宝石或其它物品的生成数值尚未确认，未启用满值规则；其它内容页面不受影响。",
-        _ => $"模块操作未确认（{code}）。请先刷新核验；若有不确定写入，需要正常重启游戏后再操作，不会自动重试。"
+        _ => notExecuted ? $"当前操作条件不满足（{code}）。" : $"模块操作未确认（{code}）。请先刷新核验；若有不确定写入，需要正常重启游戏后再操作，不会自动重试。"
     };
+}
+
+internal sealed class MutationRejectedException(string message) : InvalidOperationException(message);
+
+internal static class MutationOutcome
+{
+    internal static void ThrowIfRejected(JsonElement observation, string requestName, MutationGate? gate)
+    {
+        if (!observation.TryGetProperty("protocol", out _)) return;
+        // A malformed or mismatched receipt remains uncertain; no text allowlist.
+        if (gate is null || observation.ValueKind != JsonValueKind.Object || observation.EnumerateObject().Count() != 4 ||
+            observation.GetProperty("protocol").GetString() != "gve-mutation-outcome-v1" ||
+            observation.GetProperty("outcome").GetString() != "not-executed" ||
+            observation.GetProperty("requestName").GetString() != requestName ||
+            observation.GetProperty("reason").GetString() is not { } reason || !Regex.IsMatch(reason, "\\A[A-Z][A-Z_]{0,80}\\z"))
+            throw new InvalidOperationException("模块未返回匹配当前操作的结果，不会自动重试。");
+        gate.Reject();
+        throw new MutationRejectedException(ExpeditionClient.ExplainGuard(reason, true) + " 本次未执行修改，可刷新后继续。");
+    }
 }
 
 internal sealed class MutationGate : IDisposable
@@ -447,7 +468,7 @@ internal sealed class MutationGate : IDisposable
             {
                 if (new FileInfo(_statePath).Length > 8192) throw new InvalidOperationException("会话记录无效，已停止写入。");
                 using var document = JsonDocument.Parse(File.ReadAllBytes(_statePath));
-                if (document.RootElement.GetProperty("phase").GetString() != "confirmed")
+                if (document.RootElement.GetProperty("phase").GetString() is not ("confirmed" or "rejected"))
                     throw new InvalidOperationException("本游戏会话有结果不确定的操作，只允许读取；请正常重启游戏后再修改，不会自动重试。");
             }
         }
@@ -462,6 +483,7 @@ internal sealed class MutationGate : IDisposable
     }
     internal void Claim() { Persist("pending"); _claimed = true; }
     internal void Confirm() => Persist("confirmed");
+    internal void Reject() => Persist("rejected");
     internal void Uncertain() { if (_claimed) { try { Persist("uncertain"); } catch { } } }
     private void Persist(string phase)
     {

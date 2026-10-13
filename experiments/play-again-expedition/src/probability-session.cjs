@@ -285,7 +285,11 @@ function createProbabilitySession(engine, model, context, bridgeFactory) {
     if (!current() || !hooksOwned() || !acceptsRng(rngDescriptor()?.value) || rngDescriptor()?.writable !== true) fail('PROBABILITY_SESSION_CHANGED');
     if (activeDepth || engine.phase !== 'idle' || state.luckyWheel?.pending) fail('PROBABILITY_OPERATION_NOT_IDLE');
   }
-  function configure(input, namespace) {
+  function preflight(check) {
+    try { return check(); }
+    catch (cause) { const error = Error(String(cause?.message ?? 'PROBABILITY_PREFLIGHT_FAILED')); error.name = 'GveMutationNotStarted'; throw error; }
+  }
+  function prepareConfiguration(input, namespace) {
     assertIdle(); if (blocked) fail('PROBABILITY_SESSION_BLOCKED');
     if (namespace !== undefined && !['wheel', 'drops'].includes(namespace)) fail('UNKNOWN_PROBABILITY_NAMESPACE');
     const profile = model.validate(input);
@@ -320,6 +324,13 @@ function createProbabilitySession(engine, model, context, bridgeFactory) {
         if (descriptor && (!descriptor.configurable || descriptor.writable !== true)) fail('PROBABILITY_HOOK_NOT_WRITABLE');
         if (!descriptor && !Object.isExtensible(engine)) fail('PROBABILITY_ENGINE_NOT_EXTENSIBLE');
       }
+    }
+    return next;
+  }
+  function configure(input, namespace) {
+    const next = preflight(() => prepareConfiguration(input, namespace));
+    // From here onward, even a rolled-back hook installation is not a rejection.
+    if (!installed) {
       try {
         for (const name of names) {
           const fn = around(name); Object.defineProperty(engine, name, { value: fn, writable: true, configurable: true, enumerable: originals.get(name).own?.enumerable ?? false }); owned.set(name, fn);
@@ -336,12 +347,14 @@ function createProbabilitySession(engine, model, context, bridgeFactory) {
     settings = next; return inspect();
   }
   function reset(namespace) {
-    if (namespace !== undefined && !['wheel', 'drops'].includes(namespace)) fail('UNKNOWN_PROBABILITY_NAMESPACE');
-    if (activeDepth || engine.phase !== 'idle' || state.luckyWheel?.pending) fail('PROBABILITY_OPERATION_NOT_IDLE');
+    preflight(() => {
+      if (namespace !== undefined && !['wheel', 'drops'].includes(namespace)) fail('UNKNOWN_PROBABILITY_NAMESPACE');
+      if (activeDepth || engine.phase !== 'idle' || state.luckyWheel?.pending) fail('PROBABILITY_OPERATION_NOT_IDLE');
+    });
     if (namespace !== undefined) {
       const next = Object.fromEntries(Object.entries(settings).filter(([key]) => namespace === 'wheel' ? key === 'drops' : key !== 'drops'));
       if (Object.keys(next).length) {
-        assertIdle(); if (blocked) fail('PROBABILITY_SESSION_BLOCKED');
+        preflight(() => { assertIdle(); if (blocked) fail('PROBABILITY_SESSION_BLOCKED'); });
         settings = next;
         return { restored: true, conflicts: [], namespace, rngOriginal: acceptsRng(rngDescriptor()?.value), sessionOnly: true };
       }
@@ -356,6 +369,6 @@ function createProbabilitySession(engine, model, context, bridgeFactory) {
     owned.clear(); installed = false; settings = {}; blocked = null;
     return { restored: conflicts.length === 0, conflicts, namespace: namespace ?? null, rngOriginal: acceptsRng(rngDescriptor()?.value), sessionOnly: true };
   }
-  return { inspect, configure, reset };
+  return { inspect, configure, reset, mutationOutcomeVersion: 1 };
 }
 module.exports = { createProbabilitySession };
