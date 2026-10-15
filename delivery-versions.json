@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
   "deliveries": [
+    { "tagPrefix": "deskrawl-v", "version": "1.0.0", "evidence": "artifacts/deskrawl/local-review-20261014-210100/Deskrawl-v1.0.0-local.zip", "sha256": "2B3BFA1AA7CE56177F81B12F86C1AC3AC6D81B66CDFFF1F1E1851D0A4DD1C3F6" },
+    { "tagPrefix": "deskrawl-v", "version": "1.0.1", "evidence": "artifacts/deskrawl/local-review-20261015-021717/Deskrawl-v1.0.1-local.zip", "sha256": "EC5B6EF46F490DC25635485A89F9B0A0981EAD009470AE21EF048DEF7B20C915" },
     { "tagPrefix": "play-again-expedition-v", "version": "0.0.7", "evidence": "games/play-again-expedition/docs/WHEEL_TEN_DRAW_LOCAL.md" },
     { "tagPrefix": "play-again-expedition-v", "version": "0.0.8", "evidence": "games/play-again-expedition/docs/FATE_EQUIPMENT_LOCAL.md", "sha256": "8BA15744BF9F91DFE20D58312D1D50B62869A0C90FE7BFD947DF91C848EB69C9" },
     { "tagPrefix": "play-again-expedition-v", "version": "0.0.9", "evidence": "games/play-again-expedition/docs/EQUIPMENT_WHEEL_LOCAL.md", "sha256": "9EA3E0C434BB323BDFEAEA2E7F437114E3385EA5B2D82594264F6AA384E092F5" },

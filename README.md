@@ -27,6 +27,7 @@ catalog.json
 
 ## 当前模块
 
+- 桌面破坏神：[`game.deskrawl` v1.0.2](games/deskrawl/README.md)，包含人物属性、装备生成、掉落规则、钓鱼、材料和已有可堆叠背包物品六个页面，加载要求主程序至少 0.5.1。
 - 放置斩魔录：[`game.fzzml` v2.1.5](games/fzzml/docs/README.md)
 - 不问凡尘：[`game.worldapart` v1.3.5](games/worldapart/docs/README.md)
 - [`game.last-epoch` v0.5.7](games/last-epoch/docs/README.md)，普通离线与完全离线入口共用，分析证据见其 [ANALYSIS.md](games/last-epoch/docs/ANALYSIS.md)

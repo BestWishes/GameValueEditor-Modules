@@ -119,7 +119,7 @@ internal abstract class ModuleEditorPageBase : IGameEditorPage
 
 internal sealed class InventoryEditorPage : ModuleEditorPageBase
 {
-    private readonly IInventoryGameAdapter _adapter;
+    private readonly Func<GameProcessContext, IReadOnlyList<AdapterInventoryItem>> _readInventory;
     private readonly ObservableCollection<AdapterInventoryItem> _items = [];
     private readonly ICollectionView _itemsView;
     private readonly DataGrid _grid = new() { IsReadOnly = true, SelectionMode = DataGridSelectionMode.Extended };
@@ -127,9 +127,17 @@ internal sealed class InventoryEditorPage : ModuleEditorPageBase
     private readonly TextBox _countFilter = new() { ToolTip = "按物品数量精确查找", Margin = ModuleVisualResources.InlineControlSpacing };
 
     public InventoryEditorPage(IInventoryGameAdapter adapter, GameEditorPageContext context, string description)
+        : this(adapter.ReadInventory, context, description)
+    {
+    }
+
+    public InventoryEditorPage(
+        Func<GameProcessContext, IReadOnlyList<AdapterInventoryItem>> readInventory,
+        GameEditorPageContext context,
+        string description)
         : base(context)
     {
-        _adapter = adapter;
+        _readInventory = readInventory;
         _itemsView = CollectionViewSource.GetDefaultView(_items);
         _itemsView.Filter = FilterItem;
         _nameFilter.TextChanged += (_, _) => _itemsView.Refresh();
@@ -180,7 +188,7 @@ internal sealed class InventoryEditorPage : ModuleEditorPageBase
     private async Task RefreshAsync()
     {
         Context.Host.ReportStatus("正在读取游戏背包…");
-        await ReadSnapshotAsync(() => _adapter.ReadInventory(Context.Process), items =>
+        await ReadSnapshotAsync(() => _readInventory(Context.Process), items =>
         {
             _items.Clear();
             foreach (var item in items) _items.Add(item);

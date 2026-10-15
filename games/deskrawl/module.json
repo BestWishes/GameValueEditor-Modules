@@ -1,0 +1,59 @@
+{
+  "id": "game.deskrawl",
+  "version": "1.0.2",
+  "displayName": "Deskrawl（桌面破坏神）专属修改模块",
+  "gameDisplayName": "桌面破坏神",
+  "description": "提供人物、装备生成、掉落规则、钓鱼、中文材料及已有可堆叠背包物品编辑；持久字段走游戏保存链。",
+  "assemblyFile": "GameValueEditor.Modules.Deskrawl.dll",
+  "hostApiVersion": 8,
+  "supportsUnlistedBuildValidation": false,
+  "minimumHostVersion": "0.5.1",
+  "processNames": [
+    "Deskrawl"
+  ],
+  "compatibleBuilds": [
+    {
+      "executableSha256": "7E3D03F93C507F9109611DC17414EE8F730BA730AED09D28AD0E4689E5726BEE",
+      "gameAssemblySha256": "F8221364BE8101C60D76BE3E031F2CD5BE376A7FB6B9B73A7CFB45E2A52A9FAB",
+      "metadataSha256": "F5CF7BA1BBD13CB099EA231AC89ED772F10C9F28D329F5DAB9BC805A3809B802"
+    }
+  ],
+  "editors": [
+    {
+      "id": "game.deskrawl.character-attributes",
+      "displayName": "人物属性",
+      "order": 200,
+      "sessionOnly": false
+    },
+    {
+      "id": "game.deskrawl.equipment-generation",
+      "displayName": "装备生成",
+      "order": 240,
+      "sessionOnly": true
+    },
+    {
+      "id": "game.deskrawl.drop-rules",
+      "displayName": "掉落规则",
+      "order": 250,
+      "sessionOnly": true
+    },
+    {
+      "id": "game.deskrawl.fishing-loot",
+      "displayName": "钓鱼",
+      "order": 260,
+      "sessionOnly": true
+    },
+    {
+      "id": "game.deskrawl.materials",
+      "displayName": "材料",
+      "order": 300,
+      "sessionOnly": false
+    },
+    {
+      "id": "game.deskrawl.inventory-items",
+      "displayName": "背包物品",
+      "order": 320,
+      "sessionOnly": false
+    }
+  ]
+}
