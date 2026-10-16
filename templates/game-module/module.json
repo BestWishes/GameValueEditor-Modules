@@ -6,6 +6,7 @@
   "description": "为 __GAME_DISPLAY_NAME__ 提供经过构建验证的专属编辑功能。",
   "assemblyFile": "GameValueEditor.Modules.__CLASS__.dll",
   "hostApiVersion": 8,
+  "supportsUnlistedBuildValidation": true,
   "minimumHostVersion": "0.5.1",
   "processNames": [
     "__PROCESS_NAME__"

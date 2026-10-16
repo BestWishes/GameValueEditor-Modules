@@ -35,6 +35,7 @@ internal sealed class Il2CppRuntimeResolver : IDisposable
     private bool _uncertain;
     public ulong ModuleBase { get; }
     public ulong ModuleEnd { get; }
+    public string InstanceIdentity => $"{_process.Id}|{_start.Ticks}|{ModuleBase:X}|{ModuleEnd:X}";
 
     public Il2CppRuntimeResolver(GameProcessContext context)
     {
@@ -95,19 +96,7 @@ internal sealed class Il2CppRuntimeResolver : IDisposable
     {
         var key = $"{imageName}|{ns}|{name}";
         if (_classes.TryGetValue(key, out var cached)) return cached;
-        if (_images.Count == 0)
-        {
-            using var count = Allocate(8);
-            var assemblies = Call(Export("il2cpp_domain_get_assemblies"), Call(Export("il2cpp_domain_get")), count.Address);
-            var length = ReadPointer(count.Address);
-            if (length is 0 or > 1024 || assemblies == 0) throw new InvalidOperationException("游戏运行时尚未初始化，请稍后刷新。");
-            for (ulong i = 0; i < length; i++)
-            {
-                var image = Call(Export("il2cpp_assembly_get_image"), ReadPointer(assemblies + i * 8));
-                _images.Add(image);
-                _imageNames[image] = ReadUtf8(Call(Export("il2cpp_image_get_name"), image));
-            }
-        }
+        EnsureImages();
         using var namespaceText = Utf8(ns);
         using var nameText = Utf8(name);
         var matches = new List<ulong>();
@@ -129,6 +118,23 @@ internal sealed class Il2CppRuntimeResolver : IDisposable
         }
         if (matches.Count != 1) throw new InvalidOperationException($"当前游戏找不到唯一类型 {ns}.{name}（{imageName}）。");
         return _classes[key] = matches[0];
+    }
+
+    private void EnsureImages()
+    {
+        if (_images.Count == 0)
+        {
+            using var count = Allocate(8);
+            var assemblies = Call(Export("il2cpp_domain_get_assemblies"), Call(Export("il2cpp_domain_get")), count.Address);
+            var length = ReadPointer(count.Address);
+            if (length is 0 or > 1024 || assemblies == 0) throw new InvalidOperationException("游戏运行时尚未初始化，请稍后刷新。");
+            for (ulong i = 0; i < length; i++)
+            {
+                var image = Call(Export("il2cpp_assembly_get_image"), ReadPointer(assemblies + i * 8));
+                _images.Add(image);
+                _imageNames[image] = ReadUtf8(Call(Export("il2cpp_image_get_name"), image));
+            }
+        }
     }
 
     public ulong ObjectClass(ulong instance) => instance != 0 ? ReadPointer(instance) :
@@ -189,6 +195,15 @@ internal sealed class Il2CppRuntimeResolver : IDisposable
     {
         var key = $"{klass:X}|{name}|{isStatic}|{returnType}|{string.Join('|', parameters)}";
         if (_methods.TryGetValue(key, out var cached)) return cached;
+        var matches = MethodsWithSignature(klass, isStatic, returnType, parameters, name);
+        if (matches.Count != 1) throw new InvalidOperationException($"当前游戏找不到唯一方法 {name}({string.Join(", ", parameters)})；未执行修改。");
+        return _methods[key] = matches[0];
+    }
+
+    // Candidates only, never evidence of semantic identity or permission to call.
+    public IReadOnlyList<NativeMethod> MethodsWithSignature(ulong klass, bool isStatic,
+        string returnType, string[] parameters, string? name = null)
+    {
         var matches = new List<NativeMethod>();
         if (!_methodNames.TryGetValue(klass, out var names))
         {
@@ -205,7 +220,7 @@ internal sealed class Il2CppRuntimeResolver : IDisposable
             }
             _methodNames[klass] = names;
         }
-        foreach (var info in names.GetValueOrDefault(name, []))
+        foreach (var info in name is null ? names.Values.SelectMany(items => items) : names.GetValueOrDefault(name, []))
         {
             if (Call(Export("il2cpp_method_get_param_count"), info) != (ulong)parameters.Length) continue;
             using var implementationFlags = Allocate(4);
@@ -219,8 +234,43 @@ internal sealed class Il2CppRuntimeResolver : IDisposable
             if (pointer < ModuleBase || pointer >= ModuleEnd) throw new InvalidDataException($"方法 {name} 不在当前 GameAssembly 内。");
             matches.Add(new NativeMethod(pointer, info));
         }
-        if (matches.Count != 1) throw new InvalidOperationException($"当前游戏找不到唯一方法 {name}({string.Join(", ", parameters)})；未执行修改。");
-        return _methods[key] = matches[0];
+        return matches;
+    }
+
+    public IReadOnlyList<ulong> OpaqueClasses(string imageName)
+    {
+        // Initialize only the requested game's image inventory, not a filesystem scan.
+        EnsureImages();
+        var image = _images.Single(item => _imageNames[item] == imageName);
+        var count = Call(Export("il2cpp_image_get_class_count"), image);
+        if (count is 0 or > 10000) throw new InvalidDataException("游戏类型数量超出解析上限。");
+        var result = new List<ulong>();
+        for (ulong index = 0; index < count; index++)
+        {
+            var klass = Call(Export("il2cpp_image_get_class"), image, index);
+            var name = ReadUtf8(Call(Export("il2cpp_class_get_name"), klass));
+            if (name.Length is < 1 or > 3 || name.Any(ch => ch is < 'a' or > 'z')) continue;
+            if (ReadUtf8(Call(Export("il2cpp_class_get_namespace"), klass)).Length == 0) result.Add(klass);
+        }
+        if (result.Count > 512) throw new InvalidDataException("混淆类型候选数量超出解析上限。");
+        return result;
+    }
+
+    public ulong UniqueInstanceField(ulong klass, string typeName)
+    {
+        using var iterator = Allocate(8);
+        var matches = new List<string>();
+        for (var index = 0; index < 4096; index++)
+        {
+            var field = Call(Export("il2cpp_class_get_fields"), klass, iterator.Address);
+            if (field == 0) break;
+            if ((Call(Export("il2cpp_field_get_flags"), field) & 0x10) == 0 &&
+                SameType(TypeName(Call(Export("il2cpp_field_get_type"), field)), typeName))
+                matches.Add(ReadUtf8(Call(Export("il2cpp_field_get_name"), field)));
+            if (index == 4095) throw new InvalidDataException("字段数量超出解析上限。");
+        }
+        if (matches.Count != 1) throw new InvalidOperationException($"类型 {typeName} 的实例字段不唯一；未执行修改。");
+        return Field(klass, matches[0], typeName);
     }
 
     public NativeMethod Method(string image, string ns, string klass, string name, bool isStatic, string result, params string[] parameters) =>

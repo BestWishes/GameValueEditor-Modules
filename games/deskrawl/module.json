@@ -1,12 +1,12 @@
 {
   "id": "game.deskrawl",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "displayName": "Deskrawl（桌面破坏神）专属修改模块",
   "gameDisplayName": "桌面破坏神",
   "description": "提供人物、装备生成、掉落规则、钓鱼、中文材料及已有可堆叠背包物品编辑；持久字段走游戏保存链。",
   "assemblyFile": "GameValueEditor.Modules.Deskrawl.dll",
   "hostApiVersion": 8,
-  "supportsUnlistedBuildValidation": false,
+  "supportsUnlistedBuildValidation": true,
   "minimumHostVersion": "0.5.1",
   "processNames": [
     "Deskrawl"

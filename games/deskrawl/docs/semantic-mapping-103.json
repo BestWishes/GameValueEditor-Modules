@@ -1,0 +1,410 @@
+[
+  {
+    "Role": "FishingMapData|ccq",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "B8D3AF1CD0E69A9BD9C01567192E28A9261251E4F63EC21EC8C50A784451B454",
+    "Instructions": 40,
+    "Matches": [
+      {
+        "Class": "FishingMapData",
+        "Signature": "System.Single cdo(FishCatchEntry a)"
+      }
+    ]
+  },
+  {
+    "Role": "FishingModifiers|ccm",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "7076E6E45D1DC1DB427C4082B4B9603B5259E13D2B8F33754FA2A6F3F23B862C",
+    "Instructions": 44,
+    "Matches": [
+      {
+        "Class": "FishingModifiers",
+        "Signature": "System.Double cdk(System.Single a)"
+      }
+    ]
+  },
+  {
+    "Role": "GameManager|dkg",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "36B82A10440A38186C370336AB1A46A25C4E5E92CAD3CF82EAC59FDD0182B8D8",
+    "Instructions": 12,
+    "Matches": [
+      {
+        "Class": "GameManager",
+        "Signature": "GameManager dlo()"
+      }
+    ]
+  },
+  {
+    "Role": "GameManager|dkm",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "6A451E385BFC5515531075DEDF34023610A34C458BFC0173C7257F4325CA79F3",
+    "Instructions": 8,
+    "Matches": [
+      {
+        "Class": "GameManager",
+        "Signature": "Player dlu()"
+      }
+    ]
+  },
+  {
+    "Role": "gh|dpe",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "31AEC73170196CC037C92FE09DF2212A1B356AB036780ED7F5AA14EFFE571BBC",
+    "Instructions": 119,
+    "Matches": [
+      {
+        "Class": "gk",
+        "Signature": "StatModifier dql(StatType a, System.Int32 b, ItemRarity c, System.Boolean d)"
+      }
+    ]
+  },
+  {
+    "Role": "hh|dyl",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "785BA425E661B37243C701732BBDD24C2250B949C2F715FB1D65141D6279F291",
+    "Instructions": 23,
+    "Matches": [
+      {
+        "Class": "hk",
+        "Signature": "System.Boolean dzt()"
+      }
+    ]
+  },
+  {
+    "Role": "hh|dym",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "62DD0B0046E3F424F5059B81F7025D81A5015263DA8E2685B4DAB033A7FF99E7",
+    "Instructions": 21,
+    "Matches": [
+      {
+        "Class": "hk",
+        "Signature": "System.Int32 dzu()"
+      }
+    ]
+  },
+  {
+    "Role": "hh|dyn",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "574A653A88AED13EB6B117750E658283F64E442C5CA91AB7E57D7C5D1A31EDCA",
+    "Instructions": 23,
+    "Matches": [
+      {
+        "Class": "hk",
+        "Signature": "System.Int64 dzv()"
+      }
+    ]
+  },
+  {
+    "Role": "hh|dyp",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "5E06422415A656B34725FCBA6136ED9A40E52E8E55D3AD1AF26FBCF736A76425",
+    "Instructions": 41,
+    "Matches": [
+      {
+        "Class": "hk",
+        "Signature": "System.Int32 dzx()"
+      }
+    ]
+  },
+  {
+    "Role": "hh|dyq",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "1F45C63445946DF0142837B657351FFAC407D7A762E9A81B35F77FBA0226E296",
+    "Instructions": 22,
+    "Matches": [
+      {
+        "Class": "hk",
+        "Signature": "System.Int32 dzy()"
+      }
+    ]
+  },
+  {
+    "Role": "hh|dyr",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "8AAE95DF007EDE153C59AE3779D6A25434038DC51FCCEA91615DEB6F199F13BC",
+    "Instructions": 135,
+    "Matches": [
+      {
+        "Class": "hk",
+        "Signature": "System.Int32 dzz()"
+      }
+    ]
+  },
+  {
+    "Role": "hh|dzd",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "5F615B20CD82BCED3DC76C08ECF16D569E6FD94D81DA9FD760470CCBED43A072",
+    "Instructions": 90,
+    "Matches": [
+      {
+        "Class": "hk",
+        "Signature": "System.Void eal(System.Boolean a, System.Int32 b, System.Int64 c)"
+      }
+    ]
+  },
+  {
+    "Role": "Inventory|fbq",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "36B82A10440A38186C370336AB1A46A25C4E5E92CAD3CF82EAC59FDD0182B8D8",
+    "Instructions": 12,
+    "Matches": [
+      {
+        "Class": "Inventory",
+        "Signature": "Inventory fdi()"
+      }
+    ]
+  },
+  {
+    "Role": "Inventory|fcb",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "3A35417E63FCBD0CB4F6FA857ACE5904765C8F0C15ADD633C4A15BCC110E0FAD",
+    "Instructions": 244,
+    "Matches": [
+      {
+        "Class": "Inventory",
+        "Signature": "System.Boolean fdt(ItemData a, System.Int32 b = 1, System.String c = null)"
+      }
+    ]
+  },
+  {
+    "Role": "Inventory|fcp",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "1C18603D4C54C0E6CCA13B9908E52653893C65E73D290FD66EB4BA693C7C7A13",
+    "Instructions": 51,
+    "Matches": [
+      {
+        "Class": "Inventory",
+        "Signature": "System.Int32 feh(ItemData a)"
+      }
+    ]
+  },
+  {
+    "Role": "Inventory|fcs",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "F5AC38E242BAC3C9F6C00CF4B514DE76B4847252F940E40BD217BC3E9190A258",
+    "Instructions": 80,
+    "Matches": [
+      {
+        "Class": "Inventory",
+        "Signature": "System.Int32 fek(ItemData a)"
+      }
+    ]
+  },
+  {
+    "Role": "Inventory|fcu",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "772DA157A215E80976EA73B9E423806B16B649E4F9C87D7C33E75198A6AC3091",
+    "Instructions": 57,
+    "Matches": [
+      {
+        "Class": "Inventory",
+        "Signature": "System.Int32 fem(ItemData a)"
+      }
+    ]
+  },
+  {
+    "Role": "Inventory|fcv",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "65D59C99AA2F4EB1D5FDF5508767BCDA05704CA6D1DB15B2822CE5D637186821",
+    "Instructions": 65,
+    "Matches": [
+      {
+        "Class": "Inventory",
+        "Signature": "System.Boolean fen(ItemData a, System.Int32 b)"
+      }
+    ]
+  },
+  {
+    "Role": "ItemData|ceu",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "9969B3A463297AF3F389CABA9EA48D4CC610D3924C733DEF5206148788DECFF9",
+    "Instructions": 35,
+    "Matches": [
+      {
+        "Class": "ItemData",
+        "Signature": "System.String cfs()"
+      }
+    ]
+  },
+  {
+    "Role": "LootManager|duh",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "EA2FEAD292F1DE65FBBA75B163CD73094EA195AAB444B38AEB9DD8FFDF9459C0",
+    "Instructions": 52,
+    "Matches": [
+      {
+        "Class": "LootManager",
+        "Signature": "System.Single dvo()"
+      }
+    ]
+  },
+  {
+    "Role": "ObscuredFloat|kdo",
+    "Assembly": "ACTk.Runtime",
+    "Hash": "514C735E377AB4C8832CB46D3931C581AC634958039ECB4E1CCA3AAFB18D6975",
+    "Instructions": 142,
+    "Matches": [
+      {
+        "Class": "ObscuredFloat",
+        "Signature": "System.Single kft()"
+      }
+    ]
+  },
+  {
+    "Role": "ObscuredInt|kff",
+    "Assembly": "ACTk.Runtime",
+    "Hash": "4ADF10F3CB1CD5AE9E7A7A9C2CE6D3CA68DD43A1689CC9363212A7F60BC7DD00",
+    "Instructions": 78,
+    "Matches": [
+      {
+        "Class": "ObscuredInt",
+        "Signature": "System.Int32 khj()"
+      }
+    ]
+  },
+  {
+    "Role": "ObscuredLong|kfy",
+    "Assembly": "ACTk.Runtime",
+    "Hash": "C68C5E6C6FF150C6495593FC04FB08E71D6E132DDFACD44156137019A2F96E3E",
+    "Instructions": 104,
+    "Matches": [
+      {
+        "Class": "ObscuredLong",
+        "Signature": "System.Int64 kic()"
+      }
+    ]
+  },
+  {
+    "Role": "Player|bjy",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "7F83D3154E4447CAB53477E4C8D8DE3294ACD33706742FA602BFA1C63394CF23",
+    "Instructions": 411,
+    "Matches": [
+      {
+        "Class": "Player",
+        "Signature": "System.Double bkj(StatType a)"
+      }
+    ]
+  },
+  {
+    "Role": "Player|fdt",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "8D7EAA67E0D23BDDCEB277492628588C430C62719D1B1BBD158AAAB61E164DBC",
+    "Instructions": 102,
+    "Matches": [
+      {
+        "Class": "Player",
+        "Signature": "System.Void ffl(StatType a, System.Double b)"
+      }
+    ]
+  },
+  {
+    "Role": "Player|fko",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "8B369FDC60EE92C4E58CE24A19E97C57A3D13F57477E273D936666589E42FE37",
+    "Instructions": 131,
+    "Matches": [
+      {
+        "Class": "Player",
+        "Signature": "System.Int64 fms(System.Int32 a)"
+      }
+    ]
+  },
+  {
+    "Role": "Player|fkt",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "926EB79A098BA3E64943609A795E54A7D5AD64C58C0671A30CA14C2A6A927ABE",
+    "Instructions": 81,
+    "Matches": [
+      {
+        "Class": "Player",
+        "Signature": "System.Void fmx(System.Int32 a, System.Int64 b)"
+      }
+    ]
+  },
+  {
+    "Role": "PlayerData|fmc",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "36B82A10440A38186C370336AB1A46A25C4E5E92CAD3CF82EAC59FDD0182B8D8",
+    "Instructions": 12,
+    "Matches": [
+      {
+        "Class": "PlayerData",
+        "Signature": "PlayerData fog()"
+      }
+    ]
+  },
+  {
+    "Role": "PlayerData|fmg",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "EED701C31F804FA5B0B5C65C59C3523E499861E2AEB28617BFAFA831B674FE7E",
+    "Instructions": 66,
+    "Matches": [
+      {
+        "Class": "PlayerData",
+        "Signature": "System.Void fok(System.Int32 a)"
+      }
+    ]
+  },
+  {
+    "Role": "PlayerTalentBook|fnu",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "36B82A10440A38186C370336AB1A46A25C4E5E92CAD3CF82EAC59FDD0182B8D8",
+    "Instructions": 12,
+    "Matches": [
+      {
+        "Class": "PlayerTalentBook",
+        "Signature": "PlayerTalentBook fpy()"
+      }
+    ]
+  },
+  {
+    "Role": "PlayerTalentBook|fob",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "7A7787786F8A83A856E2948330F12727BCD33BAB0A52EE7F974098FE75A269D8",
+    "Instructions": 127,
+    "Matches": [
+      {
+        "Class": "PlayerTalentBook",
+        "Signature": "System.Int32 fqf()"
+      }
+    ]
+  },
+  {
+    "Role": "PlayerTalentBook|fot",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "3D8BE66C26D8240BB5F05EE6691E148A8CFCA1E1DADFEB85183BC150B9C9E89E",
+    "Instructions": 44,
+    "Matches": [
+      {
+        "Class": "PlayerTalentBook",
+        "Signature": "System.Void fqx(System.Int32 a)"
+      }
+    ]
+  },
+  {
+    "Role": "SaveSystem|edw",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "C4757EF200EA1A884296CD73C1537F4850D1505C5D0C89DB9B9800427FB01A74",
+    "Instructions": 17,
+    "Matches": [
+      {
+        "Class": "SaveSystem",
+        "Signature": "SaveSystem efe()"
+      }
+    ]
+  },
+  {
+    "Role": "SaveSystem|egw",
+    "Assembly": "Assembly-CSharp",
+    "Hash": "2EF6DA2BDA2D5ED7BE4C70BD1C86F0DFBA7FCAB4A488CAFFDA76EEBDF7062BEE",
+    "Instructions": 49,
+    "Matches": [
+      {
+        "Class": "SaveSystem",
+        "Signature": "System.Void eie(System.Boolean a = False)"
+      }
+    ]
+  }
+]

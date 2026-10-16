@@ -24,7 +24,9 @@ public sealed class __CLASS__GameAdapter :
             ? new EntityEditorPage(this, context, MainEditorId, "完成真实数据链路后替换此说明。")
             : throw new InvalidOperationException($"模块没有页面：{editorId}。");
 
-    // 脚手架必须默认安全失败。实现并验证当前构建后才能返回 true。
+    // 脚手架必须默认安全失败。交付前必须实现小更新自动运行时验证，
+    // 不能以指纹未登记直接拒绝，也不能仅凭进程名/单个签名直接放行。
+    // 对根对象和各能力的字段/方法/代码语义分别验证，歧义或结构变化拒绝受影响能力。
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint) => false;
 
     public AdapterFieldValue ReadField(GameProcessContext process, string fieldKey) =>

@@ -71,6 +71,7 @@ internal sealed class DeskrawlRuntime : IDisposable
     private readonly IntPtr _handle;
     private readonly Il2CppRuntimeResolver _runtime;
     private readonly string _gameAssemblyPath;
+    private readonly DeskrawlSemanticResolver _semantic;
 
     internal DeskrawlRuntime(GameProcessContext context)
     {
@@ -86,6 +87,7 @@ internal sealed class DeskrawlRuntime : IDisposable
         try
         {
             _runtime = new Il2CppRuntimeResolver(context);
+            _semantic = new DeskrawlSemanticResolver(_runtime, _gameAssemblyPath);
         }
         catch
         {
@@ -108,18 +110,37 @@ internal sealed class DeskrawlRuntime : IDisposable
         }
     }
 
+    internal GameDeclaredVersionInfo ReadApplicationMetadata()
+    {
+        if (!IsDeskrawl(_context)) throw new InvalidOperationException("当前进程身份与桌面破坏神不一致。");
+
+        // The productName getter is stripped in this build. Unity's startup files
+        // retain the name/GUID declarations without needing character, hook or save calls.
+        var version = ReadManagedString(_runtime.Call(_runtime.Method(
+            "UnityEngine.CoreModule.dll", "UnityEngine", "Application", "get_version", true, "System.String").Pointer));
+        var dataDirectory = Path.Combine(Path.GetDirectoryName(_context.ExecutablePath)!, "Deskrawl_Data");
+        _runtime.CheckAlive();
+        var productName = DeskrawlApplicationMetadata.ReadProductName(dataDirectory);
+        var buildGuid = DeskrawlApplicationMetadata.ReadBuildGuid(dataDirectory);
+        _runtime.CheckAlive();
+        return new(
+            version,
+            productName,
+            buildGuid);
+    }
+
     internal void ValidateCore()
     {
         if (!IsDeskrawl(_context)) throw new InvalidOperationException("当前进程身份与桌面破坏神不一致。");
         _ = Class("GameManager");
         _ = Method("GameManager", "dkg", true, "GameManager");
-        _ = Method("GameManager", "dkm", false, "Player");
         _ = ExecuteTasks;
     }
 
     internal void ValidateCharacter()
     {
         ValidateCore();
+        _ = Method("GameManager", "dkm", false, "Player");
         _ = Method("PlayerData", "fmc", true, "PlayerData");
         _ = Method("PlayerData", "fmg", false, "System.Void", "System.Int32");
         _ = Method("PlayerTalentBook", "fnu", true, "PlayerTalentBook");
@@ -167,7 +188,7 @@ internal sealed class DeskrawlRuntime : IDisposable
         var save = SaveSystem;
         if (save == 0 || Inventory == 0)
             throw new InvalidOperationException("材料背包尚未加载，请进入存档后刷新。");
-        var definitions = _runtime.Reference(save, "nms", "System.Collections.Generic.Dictionary<System.String,ItemData>");
+        var definitions = ItemDefinitions(save);
         if (definitions == 0) throw new InvalidOperationException("游戏材料定义表尚未加载。");
         _ = ReadDefinitionEntries(definitions);
     }
@@ -176,7 +197,7 @@ internal sealed class DeskrawlRuntime : IDisposable
     {
         ValidateMaterials();
         _ = Method("Inventory", "fcu", false, "System.Int32", "ItemData");
-        var definitions = _runtime.Reference(SaveSystem, "nms", "System.Collections.Generic.Dictionary<System.String,ItemData>");
+        var definitions = ItemDefinitions(SaveSystem);
         var hasStackable = ReadDefinitionEntries(definitions).Any(row =>
             _runtime.ReadInt(_runtime.Address(row.Value, "Type", "ItemType")) != 1 &&
             _runtime.ReadInt(_runtime.Address(row.Value, "MaxStackSize", "System.Int32")) > 1);
@@ -330,7 +351,7 @@ internal sealed class DeskrawlRuntime : IDisposable
         ValidateMaterials();
         var save = SaveSystem;
         var inventory = Inventory;
-        var definitions = _runtime.Reference(save, "nms", "System.Collections.Generic.Dictionary<System.String,ItemData>");
+        var definitions = ItemDefinitions(save);
         var countMethod = Method("Inventory", "fcs", false, "System.Int32", "ItemData");
         var capacityMethod = Method("Inventory", "fcp", false, "System.Int32", "ItemData");
         var definitionsRows = ReadDefinitionEntries(definitions)
@@ -358,7 +379,7 @@ internal sealed class DeskrawlRuntime : IDisposable
         ValidateMaterials();
         var save = SaveSystem;
         var inventory = Inventory;
-        var definitions = _runtime.Reference(save, "nms", "System.Collections.Generic.Dictionary<System.String,ItemData>");
+        var definitions = ItemDefinitions(save);
         var countMethod = Method("Inventory", "fcu", false, "System.Int32", "ItemData");
         var definitionsRows = ReadDefinitionEntries(definitions)
             .Where(row =>
@@ -1364,11 +1385,11 @@ internal sealed class DeskrawlRuntime : IDisposable
     private Il2CppRuntimeResolver.NativeMethod ExecuteTasks =>
         _runtime.Method("UnityEngine.CoreModule.dll", "UnityEngine", "UnitySynchronizationContext", "ExecuteTasks", true, "System.Void");
     private Il2CppRuntimeResolver.NativeMethod ObscuredIntGetter =>
-        _runtime.Method(ActkAssembly, ActkNamespace, "ObscuredInt", "kff", false, "System.Int32");
+        Method("ObscuredInt", "kff", false, "System.Int32");
     private Il2CppRuntimeResolver.NativeMethod ObscuredLongGetter =>
-        _runtime.Method(ActkAssembly, ActkNamespace, "ObscuredLong", "kfy", false, "System.Int64");
+        Method("ObscuredLong", "kfy", false, "System.Int64");
     private Il2CppRuntimeResolver.NativeMethod ObscuredFloatGetter =>
-        _runtime.Method(ActkAssembly, ActkNamespace, "ObscuredFloat", "kdo", false, "System.Single");
+        Method("ObscuredFloat", "kdo", false, "System.Single");
     private Il2CppRuntimeResolver.NativeMethod ObscuredFloatConstructor =>
         _runtime.Method(ActkAssembly, ActkNamespace, "ObscuredFloat", ".ctor", false, "System.Void", "System.Single");
 
@@ -1379,7 +1400,10 @@ internal sealed class DeskrawlRuntime : IDisposable
         bool isStatic,
         string result,
         params string[] parameters) =>
-        _runtime.Method(Assembly, string.Empty, klass, name, isStatic, result, parameters);
+        _semantic.Method(klass, name, isStatic, result, parameters);
+
+    private ulong ItemDefinitions(ulong save) => _runtime.ReadPointer(save + _runtime.UniqueInstanceField(
+        _runtime.ObjectClass(save), "System.Collections.Generic.Dictionary<System.String,ItemData>"));
 
     private string ReadManagedString(ulong address)
     {

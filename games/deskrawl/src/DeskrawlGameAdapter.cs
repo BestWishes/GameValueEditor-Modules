@@ -9,6 +9,7 @@ public sealed class DeskrawlGameAdapter :
     IEntityEditorsGameAdapter,
     ICoordinatedGameEditorPageProvider,
     IGameCompatibilityDiagnosticsProvider,
+    IGameVersionMetadataProvider,
     IGameEditorFieldPolicyProvider
 {
     internal const string CharacterEditorId = "game.deskrawl.character-attributes";
@@ -65,7 +66,9 @@ public sealed class DeskrawlGameAdapter :
 
     public bool Supports(GameProcessContext process, GameBuildIdentity fingerprint)
     {
-        if (!DeskrawlRuntime.IsDeskrawl(process) || !DeskrawlBuild.IsKnown(fingerprint)) return false;
+        // Fingerprints record analyzed builds; only live, uniquely resolved structure
+        // decides compatibility. Every operation also validates its own capability.
+        if (!DeskrawlRuntime.IsDeskrawl(process)) return false;
         try
         {
             using var runtime = new DeskrawlRuntime(process);
@@ -76,6 +79,12 @@ public sealed class DeskrawlGameAdapter :
         {
             return false;
         }
+    }
+
+    public GameDeclaredVersionInfo ReadGameVersionMetadata(GameProcessContext process)
+    {
+        using var runtime = new DeskrawlRuntime(process);
+        return runtime.ReadApplicationMetadata();
     }
 
     public IReadOnlyList<GameCompatibilityDiagnostic> GetCompatibilityDiagnostics(
@@ -89,11 +98,10 @@ public sealed class DeskrawlGameAdapter :
         }
 
         var knownBuild = DeskrawlBuild.IsKnown(fingerprint);
-        result.Add(new("当前构建", knownBuild ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Failed,
+        result.Add(new("当前构建", knownBuild ? GameCompatibilityDiagnosticStatus.Passed : GameCompatibilityDiagnosticStatus.Information,
             knownBuild
                 ? "文件指纹命中已分析构建；仍会逐项验证运行时语义结构。"
-                : "文件指纹不匹配已验证构建；本版不启用未验证构建的编辑功能。"));
-        if (!knownBuild) return result;
+                : "文件指纹未登记；继续执行本地运行时验证，各功能只在所需结构验证通过后开放。"));
 
         try
         {
@@ -111,7 +119,7 @@ public sealed class DeskrawlGameAdapter :
         {
             result.Add(new("运行时连接", GameCompatibilityDiagnosticStatus.Failed, error.Message));
         }
-        result.Add(new("功能级降级", GameCompatibilityDiagnosticStatus.Passed,
+        result.Add(new("功能级降级", GameCompatibilityDiagnosticStatus.Information,
             "人物、装备生成、掉落规则、钓鱼、材料、背包物品和保存结构独立检查；失败路径会安全拒绝操作并保留其余功能。"));
         return result;
     }

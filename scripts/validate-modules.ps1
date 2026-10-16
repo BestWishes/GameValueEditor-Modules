@@ -4,6 +4,7 @@ param([switch]$SkipCatalog)
 $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 . (Join-Path $PSScriptRoot 'versioning.ps1')
+. (Join-Path $PSScriptRoot 'small-update-contract.ps1')
 Assert-ReleaseVersionContract
 & (Join-Path $PSScriptRoot 'validate-module-visuals.ps1')
 $gamesRoot = Join-Path $repoRoot "games"
@@ -39,6 +40,7 @@ foreach ($directory in Get-ChildItem -LiteralPath $gamesRoot -Directory | Sort-O
     Assert-JsonSchema -JsonPath $contributorsPath -SchemaPath (Join-Path $schemasRoot "contributors.schema.json")
 
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-SmallUpdateContract $manifest
     $gameName = $directory.Name
     $supportsUnlistedBuildValidation = $manifest.PSObject.Properties.Name -contains 'supportsUnlistedBuildValidation' -and [bool]$manifest.supportsUnlistedBuildValidation
     if ($supportsUnlistedBuildValidation -and [int]$manifest.hostApiVersion -lt 5) {

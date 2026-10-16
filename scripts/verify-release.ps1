@@ -14,6 +14,7 @@ if ($SkipCatalog -and $VerifyReleasedVersions) {
 & (Join-Path $repoRoot "scripts\test-release-retention.ps1")
 & (Join-Path $repoRoot "scripts\test-release-infrastructure.ps1")
 & (Join-Path $repoRoot "scripts\test-module-package.ps1")
+& (Join-Path $repoRoot "scripts\test-small-update-contract.ps1")
 & (Join-Path $repoRoot "scripts\test-module-catalog-properties.ps1")
 & (Join-Path $repoRoot "scripts\test-package-build-constraints.ps1")
 if ([string]::IsNullOrWhiteSpace($HostRepository)) {
